@@ -1,0 +1,36 @@
+Act as an expert full-stack engineer and environmental data scientist. Build a complete, production-ready Landfill Discharges & Waste Operations Analytics Dashboard.
+
+1. TECH STACK & CONFIGURATION:
+- Frontend: React with Tailwind CSS (clean, modern interface, highly responsive).
+- Charts: Recharts or Chart.js (interactive tooltips showing weights in metric tons/kilograms).
+- Backend: Node.js (Express) or Python.
+- Database: Connect to the existing Landfill Discharges and Operations database.
+
+2. DOMAIN-SPECIFIC CORE FEATURES:
+- Operational KPI Cards (Top Grid):
+  * Total Waste Collected (Current Month vs Last Month with trend indicators).
+  * Active Fleet/Collection Operations logged today.
+  * Landfill Capacity Used (%) with a visual progress bar.
+  * Treatment Success/Diversion Rate (% of waste recycled/treated vs buried).
+- Multi-Chart Analytics View:
+  * Time-Series Area/Line Chart: Tracking daily/weekly incoming waste weight (in Metric Tons) filtered by origin/client.
+  * Grouped Bar Chart: Comparing "Collected Volume" vs "Successfully Treated Volume" across different waste categories (e.g., Household, Industrial, Hazardous, Organic).
+  * Donut Chart: Breakdown of final treatment methods utilized (e.g., Landfilled, Incinerated, Recycled, Composted).
+
+3. ENVIRONMENTAL FORECASTING MODULE:
+- Implement a predictive capacity algorithm (using linear regression/moving average over historical discharge data).
+- Line Chart integration: Project the landfill's cumulative volume expansion over the next 6 to 12 months.
+- Calculate and display a prominent warning banner if the current discharge velocity predicts reaching maximum landfill capacity within the next year.
+
+4. AI OPERATIONS & SUGGESTIONS ENGINE:
+- Create an "Operational Insights & Efficiency Suggestions" panel.
+- Feed the statistical summary of recent discharges (e.g., spike in hazardous materials, drop in recycling rates, or high-volume discharge days) to an LLM via API.
+- The AI must return 3-4 highly specific operational suggestions focusing on:
+  * Optimizing treatment routes or methods for high-volume waste types.
+  * Recommendations for recycling diversion strategies to extend landfill lifespan.
+  * Flagging anomalies or unexpected surges in specific waste streams.
+
+5. UI/UX & FILTERING:
+- Add global dashboard filters: Date Range, Waste Type, and Collection Site/Zone.
+- Ensure all charts, forecasts, and AI text updates dynamically when a filter is applied.
+- Provide a mock dataset representing realistic daily waste collection logs (timestamps, weights, waste codes, truck IDs, treatment status) to populate the UI if the database is initially empty.
