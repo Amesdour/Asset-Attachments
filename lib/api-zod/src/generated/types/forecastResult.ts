@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ForecastPoint } from './forecastPoint';
+import type { RevenuePoint } from './revenuePoint';
+import type { SiteProjection } from './siteProjection';
 
 export interface ForecastResult {
   historicalPoints: ForecastPoint[];
@@ -19,4 +21,7 @@ export interface ForecastResult {
   warningMonths: number | null;
   /** Whether capacity will be exceeded within forecast window */
   willExceedCapacity: boolean;
+  siteProjections: SiteProjection[];
+  revenueHistorical: RevenuePoint[];
+  revenueForecast: RevenuePoint[];
 }

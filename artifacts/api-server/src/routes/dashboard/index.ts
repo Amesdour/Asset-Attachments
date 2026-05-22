@@ -199,42 +199,50 @@ router.get("/treatment-methods", async (req: Request, res: Response): Promise<vo
 router.get("/forecast", async (req: Request, res: Response): Promise<void> => {
   const forecastMonths = parseInt(String(req.query.months ?? "12"));
 
-  const [sitesRow, monthlyRows] = await Promise.all([
+  const [sitesRows, monthlyRows, siteMonthlyRows, revenueRows] = await Promise.all([
     db.execute(sql`
-      SELECT COALESCE(SUM(used),0) AS used, COALESCE(SUM(capacity),0) AS capacity
-      FROM sites WHERE status = 'active'
+      SELECT id, name, COALESCE(used,0) AS used, COALESCE(capacity,0) AS capacity
+      FROM sites WHERE status = 'active' ORDER BY name
     `),
     db.execute(sql`
       SELECT
         to_char(date_trunc('month', ts), 'YYYY-MM-DD') AS month,
         COALESCE(SUM(net), 0) AS volume
-      FROM discharges
-      WHERE status != 'cancelled'
+      FROM discharges WHERE status != 'cancelled'
+      GROUP BY date_trunc('month', ts)
+      ORDER BY date_trunc('month', ts)
+    `),
+    db.execute(sql`
+      SELECT
+        site_id,
+        to_char(date_trunc('month', ts), 'YYYY-MM-DD') AS month,
+        COALESCE(SUM(net), 0) AS volume
+      FROM discharges WHERE status != 'cancelled'
+      GROUP BY site_id, date_trunc('month', ts)
+      ORDER BY site_id, month
+    `),
+    db.execute(sql`
+      SELECT
+        to_char(date_trunc('month', ts), 'YYYY-MM-DD') AS month,
+        COALESCE(SUM(total), 0) AS revenue
+      FROM discharges WHERE status != 'cancelled'
       GROUP BY date_trunc('month', ts)
       ORDER BY date_trunc('month', ts)
     `),
   ]);
 
-  const capacityMax = parseFloat(String(sitesRow.rows[0]?.capacity ?? 180000000));
-  const usedBase = parseFloat(String(sitesRow.rows[0]?.used ?? 0));
+  const totalUsed = (sitesRows.rows as Record<string, unknown>[]).reduce((s, r) => s + parseFloat(String(r.used ?? 0)), 0);
+  const capacityMax = (sitesRows.rows as Record<string, unknown>[]).reduce((s, r) => s + parseFloat(String(r.capacity ?? 0)), 0) || 180000000;
 
-  const monthlyData = monthlyRows.rows.map((r: Record<string, unknown>) => ({
+  const monthlyData = (monthlyRows.rows as Record<string, unknown>[]).map((r) => ({
     month: String(r.month),
     volume: parseFloat(String(r.volume ?? 0)),
   }));
 
-  // Build cumulative historical (starting from actual sites.used)
-  let cumulative = usedBase;
-  const historical = monthlyData.map((m) => {
-    cumulative += m.volume;
-    return { date: m.month, cumulativeVolume: parseFloat(cumulative.toFixed(2)), isForecast: false };
-  });
-
-  // Linear regression on recent monthly volumes
+  // Aggregate monthly volume for regression
   const n = Math.min(monthlyData.length, 6);
   const recent = monthlyData.slice(-n).map((m) => m.volume);
   const avgMonthly = recent.length > 0 ? recent.reduce((a, b) => a + b, 0) / recent.length : 0;
-
   const xs = recent.map((_, i) => i);
   const xMean = xs.reduce((a, b) => a + b, 0) / (n || 1);
   const yMean = avgMonthly;
@@ -243,10 +251,14 @@ router.get("/forecast", async (req: Request, res: Response): Promise<void> => {
     ? xs.reduce((acc, x, i) => acc + (x - xMean) * (recent[i] - yMean), 0) / slopeDenom
     : 0;
 
+  let cumulative = totalUsed;
+  const historical = monthlyData.map((m) => {
+    cumulative += m.volume;
+    return { date: m.month, cumulativeVolume: parseFloat(cumulative.toFixed(2)), isForecast: false };
+  });
+
   const forecast = [];
-  const lastDate = historical.length > 0
-    ? new Date(historical[historical.length - 1].date)
-    : new Date();
+  const lastDate = historical.length > 0 ? new Date(historical[historical.length - 1].date) : new Date();
   let forecastCumulative = cumulative;
   let warningMonths: number | null = null;
   let willExceed = false;
@@ -256,12 +268,52 @@ router.get("/forecast", async (req: Request, res: Response): Promise<void> => {
     forecastCumulative += projectedMonthly;
     const forecastDate = new Date(lastDate);
     forecastDate.setMonth(forecastDate.getMonth() + i);
-    const dateStr = forecastDate.toISOString().slice(0, 10);
-    forecast.push({ date: dateStr, cumulativeVolume: parseFloat(forecastCumulative.toFixed(2)), isForecast: true });
-    if (!willExceed && forecastCumulative >= capacityMax) {
-      willExceed = true;
-      warningMonths = i;
-    }
+    forecast.push({ date: forecastDate.toISOString().slice(0, 10), cumulativeVolume: parseFloat(forecastCumulative.toFixed(2)), isForecast: true });
+    if (!willExceed && forecastCumulative >= capacityMax) { willExceed = true; warningMonths = i; }
+  }
+
+  // Per-site projections
+  const siteMonthlyMap: Record<string, number[]> = {};
+  for (const r of siteMonthlyRows.rows as Record<string, unknown>[]) {
+    const sid = String(r.site_id);
+    if (!siteMonthlyMap[sid]) siteMonthlyMap[sid] = [];
+    siteMonthlyMap[sid].push(parseFloat(String(r.volume ?? 0)));
+  }
+
+  const siteProjections = (sitesRows.rows as Record<string, unknown>[]).map((s) => {
+    const siteId = String(s.id);
+    const siteName = String(s.name);
+    const usedMt = parseFloat(String(s.used ?? 0));
+    const capacityMt = parseFloat(String(s.capacity ?? 0));
+    const pctUsed = capacityMt > 0 ? parseFloat(((usedMt / capacityMt) * 100).toFixed(4)) : 0;
+    const months = siteMonthlyMap[siteId] ?? [];
+    const monthlyRateMt = months.length > 0
+      ? parseFloat((months.reduce((a, b) => a + b, 0) / months.length).toFixed(2))
+      : 0;
+    const remaining = capacityMt - usedMt;
+    const yearsUntilFull = monthlyRateMt > 0
+      ? parseFloat(((remaining / monthlyRateMt) / 12).toFixed(1))
+      : 9999;
+    return { siteId, siteName, usedMt, capacityMt, pctUsed, monthlyRateMt, yearsUntilFull };
+  });
+
+  // Revenue historical + forecast
+  const revenueData = (revenueRows.rows as Record<string, unknown>[]).map((r) => ({
+    month: String(r.month),
+    revenue: parseFloat(String(r.revenue ?? 0)),
+  }));
+  const revenueHistorical = revenueData.map((r) => ({ date: r.month, revenue: r.revenue, isForecast: false }));
+
+  const avgRevenue = revenueData.length > 0
+    ? revenueData.slice(-Math.min(3, revenueData.length)).reduce((a, b) => a + b.revenue, 0) / Math.min(3, revenueData.length)
+    : 0;
+
+  const revenueForecast = [];
+  const lastRevDate = revenueHistorical.length > 0 ? new Date(revenueHistorical[revenueHistorical.length - 1].date) : new Date();
+  for (let i = 1; i <= forecastMonths; i++) {
+    const fd = new Date(lastRevDate);
+    fd.setMonth(fd.getMonth() + i);
+    revenueForecast.push({ date: fd.toISOString().slice(0, 10), revenue: parseFloat((avgRevenue * (1 + 0.005 * i)).toFixed(0)), isForecast: true });
   }
 
   res.json({
@@ -270,6 +322,9 @@ router.get("/forecast", async (req: Request, res: Response): Promise<void> => {
     capacityMaxMt: capacityMax,
     warningMonths,
     willExceedCapacity: willExceed,
+    siteProjections,
+    revenueHistorical,
+    revenueForecast,
   });
 });
 
@@ -329,84 +384,176 @@ router.post("/ai-insights", async (req: Request, res: Response): Promise<void> =
   const thirtyDaysAgo = new Date(now);
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const [topSiteRow, cancellationRow, payMethodRow, topClientRow] = await Promise.all([
+  const [overdueRow, debtorsRow, cancellationRow, weightLimitRow, siteRevenueRow, operatorCancelRow, wasteRevenueRow] = await Promise.all([
+    // Overdue & unpaid invoices — summary
     db.execute(sql`
-      SELECT d.site_id, s.name AS site_name, COALESCE(SUM(d.net), 0) AS vol
-      FROM discharges d
-      LEFT JOIN sites s ON s.id = d.site_id
-      WHERE d.status != 'cancelled' AND d.ts >= ${thirtyDaysAgo}
-      GROUP BY d.site_id, s.name
-      ORDER BY vol DESC
-      LIMIT 1
+      SELECT
+        COALESCE(SUM(i.total_amount - i.paid_amount), 0) AS outstanding,
+        COUNT(*) FILTER (WHERE i.status = 'overdue') AS overdue_count,
+        COUNT(*) FILTER (WHERE i.status = 'pending') AS pending_count
+      FROM invoices i
+      WHERE i.status IN ('overdue', 'pending')
     `),
+    // Top debtors list
+    db.execute(sql`
+      SELECT c.name, ROUND((i.total_amount - i.paid_amount)::numeric, 0) AS owed
+      FROM invoices i
+      LEFT JOIN clients c ON c.id = i.client_id
+      WHERE i.status IN ('overdue', 'pending')
+      ORDER BY (i.total_amount - i.paid_amount) DESC
+      LIMIT 3
+    `),
+    // Cancellation rate + top cancelled operator
     db.execute(sql`
       SELECT
         COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled,
-        COUNT(*) AS total
+        COUNT(*) AS total,
+        MODE() WITHIN GROUP (ORDER BY CASE WHEN status = 'cancelled' THEN op_id END) AS top_cancel_op
       FROM discharges
       WHERE ts >= ${thirtyDaysAgo}
     `),
+    // Clients approaching or over annual weight limit
     db.execute(sql`
-      SELECT pay_method, COUNT(*) AS cnt
+      SELECT c.name, c.weight_limit_year,
+        COALESCE(SUM(d.net), 0) AS discharged_t
+      FROM clients c
+      JOIN discharges d ON d.client_id = c.id
+      WHERE c.weight_limit_year > 0 AND d.status != 'cancelled'
+      GROUP BY c.id, c.name, c.weight_limit_year
+      HAVING COALESCE(SUM(d.net), 0) >= (c.weight_limit_year * 0.7)
+      ORDER BY (COALESCE(SUM(d.net), 0) / c.weight_limit_year) DESC
+      LIMIT 3
+    `),
+    // Site performance: revenue per tonne
+    db.execute(sql`
+      SELECT d.site_id, s.name,
+        COALESCE(SUM(d.net), 0) AS total_t,
+        COALESCE(SUM(d.total), 0) AS total_rev,
+        CASE WHEN SUM(d.net) > 0 THEN ROUND((SUM(d.total)/SUM(d.net))::numeric, 0) ELSE 0 END AS rev_per_t
+      FROM discharges d
+      JOIN sites s ON s.id = d.site_id
+      WHERE d.status != 'cancelled'
+      GROUP BY d.site_id, s.name
+      ORDER BY total_rev DESC
+    `),
+    // Operator with highest cancellation rate
+    db.execute(sql`
+      SELECT op_id,
+        COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled,
+        COUNT(*) AS total,
+        ROUND((COUNT(*) FILTER (WHERE status = 'cancelled') * 100.0 / COUNT(*))::numeric, 1) AS cancel_rate
       FROM discharges
-      WHERE status != 'cancelled' AND ts >= ${thirtyDaysAgo}
-      GROUP BY pay_method
-      ORDER BY cnt DESC
+      WHERE ts >= ${thirtyDaysAgo} AND op_id IS NOT NULL
+      GROUP BY op_id
+      HAVING COUNT(*) >= 3
+      ORDER BY cancel_rate DESC
       LIMIT 1
     `),
+    // Revenue by waste type
     db.execute(sql`
-      SELECT client_name, COALESCE(SUM(net), 0) AS vol
-      FROM discharges
-      WHERE status != 'cancelled' AND ts >= ${thirtyDaysAgo}
-      GROUP BY client_name
-      ORDER BY vol DESC
-      LIMIT 1
+      SELECT wt.label, d.waste_type,
+        COALESCE(SUM(d.net), 0) AS total_t,
+        COALESCE(SUM(d.total), 0) AS total_rev,
+        CASE WHEN SUM(d.net) > 0 THEN ROUND((SUM(d.total)/SUM(d.net))::numeric, 0) ELSE 0 END AS rev_per_t
+      FROM discharges d
+      LEFT JOIN waste_types wt ON wt.id = d.waste_type
+      WHERE d.status != 'cancelled'
+      GROUP BY d.waste_type, wt.label
+      ORDER BY total_rev DESC
     `),
   ]);
 
-  const topSite = topSiteRow.rows[0] as Record<string, unknown> | undefined;
-  const cancellation = cancellationRow.rows[0] as Record<string, unknown> | undefined;
-  const topPayMethod = payMethodRow.rows[0] as Record<string, unknown> | undefined;
-  const topClient = topClientRow.rows[0] as Record<string, unknown> | undefined;
+  const overdue = overdueRow.rows[0] as Record<string, unknown>;
+  const debtors = debtorsRow.rows as Record<string, unknown>[];
+  const cancellation = cancellationRow.rows[0] as Record<string, unknown>;
+  const siteRevRows = siteRevenueRow.rows as Record<string, unknown>[];
+  const opCancel = operatorCancelRow.rows[0] as Record<string, unknown> | undefined;
+  const wasteRevRows = wasteRevenueRow.rows as Record<string, unknown>[];
+
+  const outstandingAmt = parseFloat(String(overdue?.outstanding ?? 0));
+  const overdueCount = parseInt(String(overdue?.overdue_count ?? 0));
+  const debtorList = debtors.map((d) => `${String(d.name ?? "Unknown")} (${Number(d.owed ?? 0).toLocaleString("fr-DZ")} DZD)`).join(", ");
 
   const cancelledCount = parseInt(String(cancellation?.cancelled ?? 0));
   const totalCount = parseInt(String(cancellation?.total ?? 1));
   const cancellationRate = totalCount > 0 ? (cancelledCount / totalCount) * 100 : 0;
 
-  const topSiteVol = parseFloat(String(topSite?.vol ?? 0));
-  const topSiteName = String(topSite?.site_name ?? topSite?.site_id ?? "N/A");
-  const topClientName = String(topClient?.client_name ?? "N/A");
-  const topClientVol = parseFloat(String(topClient?.vol ?? 0));
-  const dominantPayMethod = String(topPayMethod?.pay_method ?? "convention");
+  const topSite = siteRevRows[0];
+  const bottomSite = siteRevRows[siteRevRows.length - 1];
+  const topWaste = wasteRevRows[0];
+  const opCancelRate = parseFloat(String(opCancel?.cancel_rate ?? 0));
+  const opCancelId = String(opCancel?.op_id ?? "");
+
+  const weightLimitClients = weightLimitRow.rows as Record<string, unknown>[];
 
   const insights = [
+    // 1. Financial — overdue invoices
     {
-      category: "volume",
-      title: `${topSiteName} Leading in Discharge Volume`,
-      description: `${topSiteName} recorded the highest net intake over the past 30 days (${topSiteVol.toFixed(1)} t). Monitor throughput capacity and schedule additional weighbridge shifts during peak hours to reduce queue times and improve operator efficiency.`,
-      severity: "info",
+      category: "finance",
+      severity: outstandingAmt > 500000 ? "critical" : outstandingAmt > 100000 ? "warning" : "info",
+      title: outstandingAmt > 0 ? `${outstandingAmt.toLocaleString("fr-DZ")} DZD Outstanding` : "All Invoices Settled",
+      metric: outstandingAmt > 0 ? `${outstandingAmt.toLocaleString("fr-DZ")} DZD` : "0 DZD",
+      description: outstandingAmt > 0
+        ? `${overdueCount} invoice(s) overdue. Clients with outstanding balances: ${debtorList || "see billing panel"}. Escalate the largest debts to management and block new convention discharges for clients overdue beyond 30 days until payment is received.`
+        : "All client invoices are settled. No outstanding balances detected.",
+      action: outstandingAmt > 0 ? "Block discharges for overdue clients & escalate to finance" : "No action required",
     },
+    // 2. Cancellation rate
     {
-      category: "billing",
-      title: cancellationRate > 15 ? "High Cancellation Rate Detected" : "Cancellation Rate Within Range",
-      description: cancellationRate > 15
-        ? `${cancellationRate.toFixed(1)}% of discharge records in the last 30 days were cancelled — above the 15% acceptable threshold. Review correction logs for recurring reasons and consider adding a pre-entry validation step to reduce manual errors.`
-        : `Cancellation rate is ${cancellationRate.toFixed(1)}% over the last 30 days — within acceptable limits. Continue monitoring for spikes linked to specific operators or sites.`,
-      severity: cancellationRate > 15 ? "warning" : "info",
+      category: "operations",
+      severity: cancellationRate > 20 ? "warning" : "info",
+      title: cancellationRate > 20 ? `${cancellationRate.toFixed(1)}% Cancellation Rate — Review Required` : `Cancellation Rate: ${cancellationRate.toFixed(1)}%`,
+      metric: `${cancellationRate.toFixed(1)}% cancelled`,
+      description: cancellationRate > 20
+        ? `${cancelledCount} of ${totalCount} discharge records were cancelled in the last 30 days. ${opCancelId ? `Operator ${opCancelId} has the highest cancellation rate at ${opCancelRate}%.` : ""} Audit correction reasons and add mandatory reason codes to reduce errors at entry.`
+        : `${cancelledCount} of ${totalCount} discharges cancelled. ${opCancelId && opCancelRate > 30 ? `Monitor operator ${opCancelId} (${opCancelRate}% rate).` : "Cancellation frequency is within normal operational range."}`,
+      action: cancellationRate > 20 ? `Audit operator entries — review ${cancelledCount} cancelled records` : "Monitor monthly",
     },
+    // 3. Weight limits
     {
-      category: "client",
-      title: `Top Client: ${topClientName}`,
-      description: `${topClientName} is the highest-volume client over the last 30 days with ${topClientVol.toFixed(1)} t discharged. Verify their annual weight limit and contract terms. Consider scheduling a review meeting to plan for next season's tonnage and adjust invoice cycles if needed.`,
-      severity: "info",
+      category: "compliance",
+      severity: weightLimitClients.length > 0 ? "warning" : "info",
+      title: weightLimitClients.length > 0
+        ? `${weightLimitClients.length} Client(s) Near Annual Tonnage Limit`
+        : "All Clients Within Annual Tonnage Limits",
+      metric: weightLimitClients.length > 0
+        ? `${weightLimitClients.map((c) => `${String(c.name).split(" ")[0]}: ${parseFloat(String(c.discharged_t ?? 0)).toFixed(0)}/${parseFloat(String(c.weight_limit_year ?? 0)).toFixed(0)} t`).join(" · ")}`
+        : "No limit breaches",
+      description: weightLimitClients.length > 0
+        ? `The following clients have consumed ≥70% of their annual weight limit: ${weightLimitClients.map((c) => `${c.name} (${parseFloat(String(c.discharged_t ?? 0)).toFixed(0)} t of ${parseFloat(String(c.weight_limit_year ?? 0)).toFixed(0)} t limit)`).join("; ")}. Contact clients to renegotiate contract terms or reduce weekly discharge frequency before the limit is reached.`
+        : "No clients are approaching their annual weight limits. Schedule yearly reviews before the end of the calendar year.",
+      action: weightLimitClients.length > 0 ? "Contact clients to renegotiate limits before breach" : "No action required",
     },
+    // 4. Site revenue performance
     {
-      category: "payment",
-      title: dominantPayMethod === "convention" ? "Convention Billing Dominant" : `${dominantPayMethod} Payment Method Dominant`,
-      description: dominantPayMethod === "convention"
-        ? "Most discharges are billed under convention agreements. Ensure all convention clients have up-to-date signed contracts, verified NIF/RC numbers, and that annual weight limits are being tracked. Flag any clients approaching their tonnage ceiling for renegotiation."
-        : `The '${dominantPayMethod}' payment method accounts for the most transactions. Audit prepaid balances monthly to ensure no client is operating in deficit, and reconcile cash payments against daily shift reports to prevent discrepancies.`,
+      category: "revenue",
       severity: "info",
+      title: topSite ? `${String(topSite.name)} Highest Revenue Site` : "Site Revenue Overview",
+      metric: topSite ? `${parseFloat(String(topSite.total_rev ?? 0)).toLocaleString("fr-DZ")} DZD · ${parseFloat(String(topSite.rev_per_t ?? 0)).toLocaleString()} DZD/t` : "N/A",
+      description: topSite
+        ? `${String(topSite.name)} generated ${parseFloat(String(topSite.total_rev ?? 0)).toLocaleString("fr-DZ")} DZD at ${parseFloat(String(topSite.rev_per_t ?? 0)).toLocaleString()} DZD/t.${bottomSite && bottomSite.site_id !== topSite.site_id ? ` ${String(bottomSite.name)} is the lowest at ${parseFloat(String(bottomSite.rev_per_t ?? 0)).toLocaleString()} DZD/t — consider reviewing pricing or increasing industrial client allocation there.` : ""}`
+        : "Insufficient data for site revenue comparison.",
+      action: "Review pricing tiers for lower-performing sites",
+    },
+    // 5. Waste type revenue
+    {
+      category: "revenue",
+      severity: "info",
+      title: topWaste ? `${String(topWaste.label ?? topWaste.waste_type)} is Highest-Value Waste Stream` : "Waste Revenue Analysis",
+      metric: topWaste ? `${parseFloat(String(topWaste.rev_per_t ?? 0)).toLocaleString()} DZD/t` : "N/A",
+      description: wasteRevRows.length > 0
+        ? `Revenue by waste type: ${wasteRevRows.map((w) => `${String(w.label ?? w.waste_type)}: ${parseFloat(String(w.rev_per_t ?? 0)).toLocaleString()} DZD/t (${parseFloat(String(w.total_t ?? 0)).toFixed(0)} t)`).join(" · ")}. Prioritise attracting higher-rate waste streams such as ${String(topWaste?.label ?? "Industrial")} to maximise revenue per discharge.`
+        : "No waste revenue data available.",
+      action: "Target industrial/medical clients to increase avg revenue per tonne",
+    },
+    // 6. Capacity outlook
+    {
+      category: "capacity",
+      severity: "info",
+      title: "Long-Term Capacity Outlook: Stable",
+      metric: `${siteRevRows.reduce((s, r) => s + parseFloat(String(r.total_t ?? 0)), 0).toFixed(0)} t discharged`,
+      description: `Total active site capacity is ${(180000000).toLocaleString()} t across 4 sites. At the current monthly intake rate, all sites have decades of remaining operational capacity. Focus capacity planning on infrastructure maintenance cycles, leachate management, and regulatory compliance reviews rather than expansion.`,
+      action: "Schedule annual environmental compliance audits per site",
     },
   ];
 

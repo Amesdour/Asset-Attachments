@@ -60,6 +60,22 @@ export interface ForecastPoint {
   isForecast?: boolean;
 }
 
+export interface SiteProjection {
+  siteId: string;
+  siteName: string;
+  usedMt: number;
+  capacityMt: number;
+  pctUsed: number;
+  monthlyRateMt: number;
+  yearsUntilFull: number;
+}
+
+export interface RevenuePoint {
+  date: string;
+  revenue: number;
+  isForecast?: boolean;
+}
+
 export interface ForecastResult {
   historicalPoints: ForecastPoint[];
   forecastPoints: ForecastPoint[];
@@ -72,6 +88,9 @@ export interface ForecastResult {
   warningMonths: number | null;
   /** Whether capacity will be exceeded within forecast window */
   willExceedCapacity: boolean;
+  siteProjections: SiteProjection[];
+  revenueHistorical: RevenuePoint[];
+  revenueForecast: RevenuePoint[];
 }
 
 export interface WasteLog {
@@ -99,12 +118,16 @@ export interface AiInsightsRequest {
 }
 
 export interface OperationalInsight {
-  /** Category of insight (routing, recycling, anomaly, capacity) */
+  /** Category of insight */
   category: string;
   title: string;
   description: string;
   /** info | warning | critical */
   severity: string;
+  /** Key metric to display prominently */
+  metric?: string;
+  /** Recommended next action */
+  action?: string;
 }
 
 export interface AiInsightsResult {

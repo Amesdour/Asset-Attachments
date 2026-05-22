@@ -7,10 +7,14 @@
  */
 
 export interface OperationalInsight {
-  /** Category of insight (routing, recycling, anomaly, capacity) */
+  /** Category of insight */
   category: string;
   title: string;
   description: string;
   /** info | warning | critical */
   severity: string;
+  /** Key metric to display prominently */
+  metric?: string;
+  /** Recommended next action */
+  action?: string;
 }

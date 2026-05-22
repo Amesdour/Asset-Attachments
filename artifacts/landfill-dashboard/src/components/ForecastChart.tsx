@@ -1,94 +1,148 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
+import {
+  ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Legend, ReferenceLine, Bar
+} from "recharts";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CSVLink } from "react-csv";
-import { Download, AlertTriangle } from "lucide-react";
+import { AlertTriangle, TrendingUp, Clock } from "lucide-react";
 import { useTheme } from "next-themes";
 import type { ForecastResult } from "@workspace/api-client-react";
+
+function YearsLabel({ years }: { years: number }) {
+  if (years >= 9999) return <span className="text-green-600 dark:text-green-400 font-semibold text-xs">Stable ∞</span>;
+  if (years > 100) return <span className="text-green-600 dark:text-green-400 font-semibold text-xs">{Math.round(years)}y remaining</span>;
+  if (years > 30) return <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs">{Math.round(years)}y remaining</span>;
+  return <span className="text-red-600 dark:text-red-400 font-semibold text-xs">{Math.round(years)}y remaining</span>;
+}
 
 export function ForecastChart({ data, loading }: { data?: ForecastResult; loading: boolean }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
-  const gridColor = isDark ? "rgba(255,255,255,0.08)" : "#e5e5e5";
-  const tickColor = isDark ? "#98999C" : "#71717a";
+  const gridColor = isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb";
+  const tickColor = isDark ? "#6b7280" : "#9ca3af";
 
-  const chartData = data ? [...data.historicalPoints, ...data.forecastPoints] : [];
-  
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (!active || !payload || payload.length === 0) return null;
-    const isForecast = payload[0].payload.isForecast;
-    
+  const volumeChartData = data
+    ? [...data.historicalPoints, ...data.forecastPoints]
+    : [];
+
+  const revenueChartData = data
+    ? [...(data.revenueHistorical ?? []), ...(data.revenueForecast ?? [])]
+    : [];
+
+  const combinedChart = volumeChartData.map((vp, i) => ({
+    date: vp.date,
+    cumulativeVolume: vp.cumulativeVolume,
+    isForecast: vp.isForecast,
+    revenue: revenueChartData[i]?.revenue ?? null,
+  }));
+
+  const VolumeTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    const isForecast = payload[0]?.payload?.isForecast;
     return (
-      <div style={{ backgroundColor: isDark ? "#1f2937" : "#fff", borderRadius: "6px", padding: "10px 14px", border: `1px solid ${gridColor}`, color: isDark ? "#f3f4f6" : "#1a1a1a", fontSize: "13px", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}>
-        <div style={{ marginBottom: "6px", fontWeight: 600, display: "flex", justifyContent: "space-between", gap: "16px" }}>
-          <span>{format(new Date(label), "MMM yyyy")}</span>
-          {isForecast && <span style={{ color: "#f59e0b", fontSize: "11px", padding: "2px 6px", borderRadius: "4px", backgroundColor: isDark ? "rgba(245,158,11,0.2)" : "rgba(245,158,11,0.1)" }}>Forecast</span>}
+      <div style={{ background: isDark ? "#1f2937" : "#fff", borderRadius: 8, padding: "10px 14px", border: `1px solid ${gridColor}`, fontSize: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
+        <div style={{ fontWeight: 600, marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
+          {format(new Date(label), "MMM yyyy")}
+          {isForecast && <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "rgba(245,158,11,0.15)", color: "#d97706" }}>Projected</span>}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ display: "inline-block", width: "10px", height: "10px", borderRadius: "2px", backgroundColor: isForecast ? "#f59e0b" : "#3b82f6" }} />
-          <span style={{ color: isDark ? "#9ca3af" : "#4b5563" }}>Cumulative Volume</span>
-          <span style={{ marginLeft: "auto", fontWeight: 600 }}>{payload[0].value.toLocaleString()} MT</span>
-        </div>
-        {data?.capacityMaxMt && (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
-            <span style={{ display: "inline-block", width: "10px", height: "2px", backgroundColor: "#ef4444" }} />
-            <span style={{ color: isDark ? "#9ca3af" : "#4b5563" }}>Max Capacity</span>
-            <span style={{ marginLeft: "auto", fontWeight: 600 }}>{data.capacityMaxMt.toLocaleString()} MT</span>
+        {payload.map((p: any, i: number) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: p.color, display: "inline-block" }} />
+            <span style={{ color: isDark ? "#9ca3af" : "#6b7280" }}>{p.name}</span>
+            <span style={{ marginLeft: "auto", fontWeight: 600, paddingLeft: 12 }}>
+              {p.dataKey === "revenue"
+                ? `${Number(p.value).toLocaleString("fr-DZ")} DZD`
+                : `${Number(p.value).toLocaleString()} t`}
+            </span>
           </div>
-        )}
+        ))}
       </div>
     );
   };
 
   return (
-    <Card className="shadow-sm">
-      <CardHeader className="px-5 pt-5 pb-3 flex flex-row items-center justify-between space-y-0 border-b border-border/50">
-        <div>
-          <CardTitle className="text-base font-semibold">Capacity Forecast</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">Projected landfill volume for next 12 months</p>
-        </div>
-        {!loading && chartData.length > 0 && (
-          <CSVLink data={chartData} filename="capacity-forecast.csv" className="print:hidden flex items-center justify-center w-7 h-7 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
-            <Download className="w-3.5 h-3.5" />
-          </CSVLink>
-        )}
-      </CardHeader>
-      
-      {data?.willExceedCapacity && (
-        <div className="bg-red-50 dark:bg-red-950/50 border-y border-red-200 dark:border-red-900 px-5 py-3 flex items-center gap-3">
-          <div className="flex-shrink-0 bg-red-100 dark:bg-red-900/80 p-2 rounded-full">
-            <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
-          </div>
+    <Card className="shadow-sm overflow-hidden">
+      <CardHeader className="px-5 pt-5 pb-3 border-b border-border/50">
+        <div className="flex items-center justify-between">
           <div>
-            <h4 className="font-semibold text-red-800 dark:text-red-300 text-sm">CAPACITY ALERT</h4>
-            <p className="text-red-700 dark:text-red-400 text-xs mt-0.5">
-              Landfill projected to reach maximum capacity in {data.warningMonths} months.
-            </p>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-primary" />
+              Capacity & Revenue Forecast
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">Solid = historical · Dashed = 12-month projection</p>
           </div>
+        </div>
+      </CardHeader>
+
+      {data?.willExceedCapacity && (
+        <div className="bg-red-50 dark:bg-red-950/50 border-b border-red-200 dark:border-red-900 px-5 py-3 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+          <p className="text-sm font-medium text-red-800 dark:text-red-300">
+            Capacity will be reached in {data.warningMonths} months — begin expansion planning immediately.
+          </p>
         </div>
       )}
 
-      <CardContent className="p-5">
+      <CardContent className="p-5 space-y-6">
         {loading ? (
-          <Skeleton className="w-full h-[300px]" />
-        ) : chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300} debounce={0}>
-            <LineChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+          <Skeleton className="w-full h-[260px]" />
+        ) : combinedChart.length > 0 ? (
+          <ResponsiveContainer width="100%" height={260} debounce={0}>
+            <ComposedChart data={combinedChart} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-              <XAxis dataKey="date" tickFormatter={(d) => format(new Date(d), "MMM yy")} tick={{ fontSize: 12, fill: tickColor }} stroke={tickColor} axisLine={false} tickLine={false} dy={10} minTickGap={30} />
-              <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: tickColor }} stroke={tickColor} axisLine={false} tickLine={false} dx={-10} domain={[0, 'dataMax']} />
-              <Tooltip content={<CustomTooltip />} isAnimationActive={false} cursor={{ stroke: tickColor, strokeDasharray: '3 3' }} />
-              
-              {data?.capacityMaxMt && (
-                <ReferenceLine y={data.capacityMaxMt} stroke="#ef4444" strokeDasharray="5 5" label={{ position: 'top', value: 'Max Capacity', fill: '#ef4444', fontSize: 11 }} />
-              )}
-              
-              <Line type="monotone" dataKey="cumulativeVolume" stroke={(d: any) => d.payload?.isForecast ? "#f59e0b" : "#3b82f6"} strokeWidth={3} dot={false} isAnimationActive={false} />
-            </LineChart>
+              <XAxis dataKey="date" tickFormatter={(d) => format(new Date(d), "MMM yy")} tick={{ fontSize: 11, fill: tickColor }} axisLine={false} tickLine={false} dy={8} minTickGap={28} />
+              <YAxis yAxisId="vol" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k t`} tick={{ fontSize: 11, fill: tickColor }} axisLine={false} tickLine={false} dx={-4} width={52} />
+              <YAxis yAxisId="rev" orientation="right" tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} tick={{ fontSize: 11, fill: tickColor }} axisLine={false} tickLine={false} dx={4} width={48} />
+              <Tooltip content={<VolumeTooltip />} isAnimationActive={false} />
+              <Legend iconType="line" wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+              <Line yAxisId="vol" type="monotone" dataKey="cumulativeVolume" name="Cumulative Volume (t)" stroke="#3b82f6" strokeWidth={2.5} dot={false} strokeDasharray={(d: any) => d?.isForecast ? "6 3" : "0"} isAnimationActive={false} />
+              <Line yAxisId="rev" type="monotone" dataKey="revenue" name="Monthly Revenue (DZD)" stroke="#10b981" strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
+            </ComposedChart>
           </ResponsiveContainer>
         ) : (
-          <div className="w-full h-[300px] flex items-center justify-center text-muted-foreground">No forecast data available</div>
+          <div className="h-[260px] flex items-center justify-center text-muted-foreground text-sm">No forecast data</div>
+        )}
+
+        {/* Per-site capacity bars */}
+        {!loading && data?.siteProjections && data.siteProjections.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              Per-Site Capacity Status
+            </h4>
+            <div className="space-y-3">
+              {data.siteProjections.map((site) => {
+                const pct = Math.max(site.pctUsed, 0.01);
+                const barWidth = Math.min(pct * 100, 100);
+                const barColor = pct > 50 ? "#ef4444" : pct > 25 ? "#f59e0b" : "#10b981";
+                return (
+                  <div key={site.siteId}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">{site.siteName}</span>
+                        <span className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">{site.siteId}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-right">
+                        <span className="text-xs text-muted-foreground">{site.monthlyRateMt.toFixed(0)} t/mo</span>
+                        <YearsLabel years={site.yearsUntilFull} />
+                      </div>
+                    </div>
+                    <div className="relative h-2 bg-secondary rounded-full overflow-hidden">
+                      <div
+                        className="absolute left-0 top-0 h-full rounded-full transition-all duration-700"
+                        style={{ width: `${barWidth}%`, background: barColor }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-0.5">
+                      <span className="text-[10px] text-muted-foreground">{site.usedMt.toLocaleString()} t used</span>
+                      <span className="text-[10px] text-muted-foreground">{site.pctUsed.toFixed(3)}% of {(site.capacityMt / 1000000).toFixed(0)}M t capacity</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>

@@ -21,6 +21,8 @@ export * from './getDashboardTreatmentMethodsParams';
 export * from './getDashboardWasteCategoriesParams';
 export * from './healthStatus';
 export * from './operationalInsight';
+export * from './revenuePoint';
+export * from './siteProjection';
 export * from './timeseriesPoint';
 export * from './treatmentMethodSlice';
 export * from './wasteCategoryBar';

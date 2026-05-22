@@ -112,7 +112,26 @@ export const GetDashboardForecastResponse = zod.object({
 })),
   "capacityMaxMt": zod.number().describe('Maximum landfill capacity in metric tons'),
   "warningMonths": zod.number().nullable().describe('Months until capacity is reached, null if not within range'),
-  "willExceedCapacity": zod.boolean().describe('Whether capacity will be exceeded within forecast window')
+  "willExceedCapacity": zod.boolean().describe('Whether capacity will be exceeded within forecast window'),
+  "siteProjections": zod.array(zod.object({
+  "siteId": zod.string(),
+  "siteName": zod.string(),
+  "usedMt": zod.number(),
+  "capacityMt": zod.number(),
+  "pctUsed": zod.number(),
+  "monthlyRateMt": zod.number(),
+  "yearsUntilFull": zod.number()
+})),
+  "revenueHistorical": zod.array(zod.object({
+  "date": zod.string(),
+  "revenue": zod.number(),
+  "isForecast": zod.boolean().optional()
+})),
+  "revenueForecast": zod.array(zod.object({
+  "date": zod.string(),
+  "revenue": zod.number(),
+  "isForecast": zod.boolean().optional()
+}))
 })
 
 
@@ -155,10 +174,12 @@ export const GetAiInsightsBody = zod.object({
 
 export const GetAiInsightsResponse = zod.object({
   "insights": zod.array(zod.object({
-  "category": zod.string().describe('Category of insight (routing, recycling, anomaly, capacity)'),
+  "category": zod.string().describe('Category of insight'),
   "title": zod.string(),
   "description": zod.string(),
-  "severity": zod.string().describe('info | warning | critical')
+  "severity": zod.string().describe('info | warning | critical'),
+  "metric": zod.string().optional().describe('Key metric to display prominently'),
+  "action": zod.string().optional().describe('Recommended next action')
 })),
   "generatedAt": zod.string()
 })
