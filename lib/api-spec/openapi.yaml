@@ -3,13 +3,15 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Landfill Discharges & Waste Operations Analytics API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: dashboard
+    description: Landfill analytics dashboard endpoints
 paths:
   /healthz:
     get:
@@ -24,6 +26,198 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /dashboard/kpis:
+    get:
+      operationId: getDashboardKpis
+      tags: [dashboard]
+      summary: Get operational KPI summary
+      parameters:
+        - in: query
+          name: dateFrom
+          schema: { type: string }
+        - in: query
+          name: dateTo
+          schema: { type: string }
+        - in: query
+          name: wasteType
+          schema: { type: string }
+        - in: query
+          name: site
+          schema: { type: string }
+      responses:
+        "200":
+          description: KPI summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardKpis"
+
+  /dashboard/timeseries:
+    get:
+      operationId: getDashboardTimeseries
+      tags: [dashboard]
+      summary: Get time-series waste weight data
+      parameters:
+        - in: query
+          name: dateFrom
+          schema: { type: string }
+        - in: query
+          name: dateTo
+          schema: { type: string }
+        - in: query
+          name: wasteType
+          schema: { type: string }
+        - in: query
+          name: site
+          schema: { type: string }
+        - in: query
+          name: granularity
+          schema: { type: string, enum: [daily, weekly] }
+      responses:
+        "200":
+          description: Time series data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimeseriesPoint"
+
+  /dashboard/waste-categories:
+    get:
+      operationId: getDashboardWasteCategories
+      tags: [dashboard]
+      summary: Get collected vs treated volume by waste category
+      parameters:
+        - in: query
+          name: dateFrom
+          schema: { type: string }
+        - in: query
+          name: dateTo
+          schema: { type: string }
+        - in: query
+          name: site
+          schema: { type: string }
+      responses:
+        "200":
+          description: Waste category breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WasteCategoryBar"
+
+  /dashboard/treatment-methods:
+    get:
+      operationId: getDashboardTreatmentMethods
+      tags: [dashboard]
+      summary: Get treatment method distribution (donut chart)
+      parameters:
+        - in: query
+          name: dateFrom
+          schema: { type: string }
+        - in: query
+          name: dateTo
+          schema: { type: string }
+        - in: query
+          name: wasteType
+          schema: { type: string }
+        - in: query
+          name: site
+          schema: { type: string }
+      responses:
+        "200":
+          description: Treatment method breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TreatmentMethodSlice"
+
+  /dashboard/forecast:
+    get:
+      operationId: getDashboardForecast
+      tags: [dashboard]
+      summary: Get landfill capacity forecast (6-12 months)
+      parameters:
+        - in: query
+          name: months
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Capacity forecast
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForecastResult"
+
+  /dashboard/logs:
+    get:
+      operationId: getDashboardLogs
+      tags: [dashboard]
+      summary: Get recent waste collection logs
+      parameters:
+        - in: query
+          name: dateFrom
+          schema: { type: string }
+        - in: query
+          name: dateTo
+          schema: { type: string }
+        - in: query
+          name: wasteType
+          schema: { type: string }
+        - in: query
+          name: site
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: pageSize
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Paginated waste logs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WasteLogsPage"
+
+  /dashboard/ai-insights:
+    post:
+      operationId: getAiInsights
+      tags: [dashboard]
+      summary: Get AI-powered operational insights
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiInsightsRequest"
+      responses:
+        "200":
+          description: AI operational insights
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiInsightsResult"
+
+  /dashboard/filters/options:
+    get:
+      operationId: getDashboardFilterOptions
+      tags: [dashboard]
+      summary: Get available filter options (sites, waste types)
+      responses:
+        "200":
+          description: Filter options
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FilterOptions"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +228,195 @@ components:
       required:
         - status
 
+    DashboardKpis:
+      type: object
+      required:
+        - totalWasteCurrentMonth
+        - totalWasteLastMonth
+        - wasteTrend
+        - activeOperationsToday
+        - capacityUsedPercent
+        - diversionRate
+        - diversionRateTrend
+      properties:
+        totalWasteCurrentMonth:
+          type: number
+          description: Total waste collected current month in metric tons
+        totalWasteLastMonth:
+          type: number
+          description: Total waste collected last month in metric tons
+        wasteTrend:
+          type: number
+          description: Percent change from last month
+        activeOperationsToday:
+          type: integer
+          description: Number of active collection operations today
+        capacityUsedPercent:
+          type: number
+          description: Landfill capacity used as percentage
+        diversionRate:
+          type: number
+          description: Percentage of waste recycled or treated vs buried
+        diversionRateTrend:
+          type: number
+          description: Trend in diversion rate vs previous period
+
+    TimeseriesPoint:
+      type: object
+      required: [date, weightMt]
+      properties:
+        date:
+          type: string
+          description: ISO date string
+        weightMt:
+          type: number
+          description: Waste weight in metric tons
+        wasteType:
+          type: ["string", "null"]
+
+    WasteCategoryBar:
+      type: object
+      required: [category, collected, treated]
+      properties:
+        category:
+          type: string
+          description: Waste category (Household, Industrial, Hazardous, Organic)
+        collected:
+          type: number
+          description: Collected volume in metric tons
+        treated:
+          type: number
+          description: Successfully treated volume in metric tons
+
+    TreatmentMethodSlice:
+      type: object
+      required: [method, value, percent]
+      properties:
+        method:
+          type: string
+          description: Treatment method (Landfilled, Incinerated, Recycled, Composted)
+        value:
+          type: number
+          description: Volume in metric tons
+        percent:
+          type: number
+          description: Percentage of total
+
+    ForecastResult:
+      type: object
+      required: [historicalPoints, forecastPoints, capacityMaxMt, warningMonths, willExceedCapacity]
+      properties:
+        historicalPoints:
+          type: array
+          items:
+            $ref: "#/components/schemas/ForecastPoint"
+        forecastPoints:
+          type: array
+          items:
+            $ref: "#/components/schemas/ForecastPoint"
+        capacityMaxMt:
+          type: number
+          description: Maximum landfill capacity in metric tons
+        warningMonths:
+          type: ["integer", "null"]
+          description: Months until capacity is reached, null if not within range
+        willExceedCapacity:
+          type: boolean
+          description: Whether capacity will be exceeded within forecast window
+
+    ForecastPoint:
+      type: object
+      required: [date, cumulativeVolume]
+      properties:
+        date:
+          type: string
+        cumulativeVolume:
+          type: number
+          description: Cumulative landfill volume in metric tons
+        isForecast:
+          type: boolean
+
+    WasteLogsPage:
+      type: object
+      required: [logs, total, page, pageSize]
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/WasteLog"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+
+    WasteLog:
+      type: object
+      required: [id, timestamp, weightMt, wasteType, wasteCode, truckId, site, treatmentStatus, treatmentMethod]
+      properties:
+        id:
+          type: integer
+        timestamp:
+          type: string
+        weightMt:
+          type: number
+        wasteType:
+          type: string
+        wasteCode:
+          type: string
+        truckId:
+          type: string
+        site:
+          type: string
+        treatmentStatus:
+          type: string
+        treatmentMethod:
+          type: string
+
+    AiInsightsRequest:
+      type: object
+      required: [statsJson]
+      properties:
+        statsJson:
+          type: string
+          description: JSON string of recent discharge statistics
+
+    AiInsightsResult:
+      type: object
+      required: [insights, generatedAt]
+      properties:
+        insights:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperationalInsight"
+        generatedAt:
+          type: string
+
+    OperationalInsight:
+      type: object
+      required: [category, title, description, severity]
+      properties:
+        category:
+          type: string
+          description: Category of insight (routing, recycling, anomaly, capacity)
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          description: "info | warning | critical"
+
+    FilterOptions:
+      type: object
+      required: [sites, wasteTypes]
+      properties:
+        sites:
+          type: array
+          items:
+            type: string
+        wasteTypes:
+          type: array
+          items:
+            type: string

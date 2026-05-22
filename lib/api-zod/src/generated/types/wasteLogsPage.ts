@@ -5,7 +5,11 @@
  * Landfill Discharges & Waste Operations Analytics API
  * OpenAPI spec version: 0.1.0
  */
+import type { WasteLog } from './wasteLog';
 
-export interface HealthStatus {
-  status: string;
+export interface WasteLogsPage {
+  logs: WasteLog[];
+  total: number;
+  page: number;
+  pageSize: number;
 }

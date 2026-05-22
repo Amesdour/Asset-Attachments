@@ -5,7 +5,9 @@
  * Landfill Discharges & Waste Operations Analytics API
  * OpenAPI spec version: 0.1.0
  */
+import type { OperationalInsight } from './operationalInsight';
 
-export interface HealthStatus {
-  status: string;
+export interface AiInsightsResult {
+  insights: OperationalInsight[];
+  generatedAt: string;
 }

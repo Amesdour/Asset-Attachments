@@ -6,6 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
-}
+export type GetDashboardLogsParams = {
+dateFrom?: string;
+dateTo?: string;
+wasteType?: string;
+site?: string;
+page?: number;
+pageSize?: number;
+};

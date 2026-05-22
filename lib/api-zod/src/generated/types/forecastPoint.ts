@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
+export interface ForecastPoint {
+  date: string;
+  /** Cumulative landfill volume in metric tons */
+  cumulativeVolume: number;
+  isForecast?: boolean;
 }
