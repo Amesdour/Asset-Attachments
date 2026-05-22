@@ -46,6 +46,32 @@ export default defineConfig({
         ]
       : []),
   ],
+  optimizeDeps: {
+    include: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "@tanstack/react-query",
+      "recharts",
+      "date-fns",
+      "next-themes",
+      "wouter",
+      "lucide-react",
+      "react-csv",
+      "@tanstack/react-table",
+      "@radix-ui/react-slot",
+      "@radix-ui/react-popover",
+      "@radix-ui/react-label",
+      "react-day-picker",
+      "@radix-ui/react-select",
+      "@radix-ui/react-toggle-group",
+      "@radix-ui/react-progress",
+      "@radix-ui/react-toggle",
+      "clsx",
+      "tailwind-merge",
+      "class-variance-authority",
+    ],
+  },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
