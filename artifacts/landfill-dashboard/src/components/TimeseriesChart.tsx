@@ -37,8 +37,8 @@ export function TimeseriesChart({
         <div style={{ marginBottom: "6px", fontWeight: 600 }}>{format(new Date(label), "MMM d, yyyy")}</div>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <span style={{ display: "inline-block", width: "10px", height: "10px", borderRadius: "2px", backgroundColor: CHART_COLORS.green }} />
-          <span style={{ color: isDark ? "#9ca3af" : "#4b5563" }}>Weight</span>
-          <span style={{ marginLeft: "auto", fontWeight: 600 }}>{payload[0].value.toLocaleString()} MT</span>
+          <span style={{ color: isDark ? "#9ca3af" : "#4b5563" }}>Poids net</span>
+          <span style={{ marginLeft: "auto", fontWeight: 600 }}>{payload[0].value.toLocaleString()} t</span>
         </div>
       </div>
     );
@@ -48,12 +48,12 @@ export function TimeseriesChart({
     <Card className="col-span-1 lg:col-span-2 shadow-sm">
       <CardHeader className="px-5 pt-5 pb-3 flex flex-row items-center justify-between space-y-0 border-b border-border/50">
         <div>
-          <CardTitle className="text-base font-semibold">Waste Collection Volume</CardTitle>
+          <CardTitle className="text-base font-semibold">Volume des décharges</CardTitle>
         </div>
         <div className="flex items-center gap-3">
           <ToggleGroup type="single" value={granularity} onValueChange={(v) => v && onGranularityChange(v as GetDashboardTimeseriesGranularity)} size="sm" className="bg-muted p-0.5 rounded-md">
-            <ToggleGroupItem value="daily" className="text-xs px-2.5 h-7 data-[state=on]:bg-background data-[state=on]:shadow-sm">Daily</ToggleGroupItem>
-            <ToggleGroupItem value="weekly" className="text-xs px-2.5 h-7 data-[state=on]:bg-background data-[state=on]:shadow-sm">Weekly</ToggleGroupItem>
+            <ToggleGroupItem value="daily" className="text-xs px-2.5 h-7 data-[state=on]:bg-background data-[state=on]:shadow-sm">Journalier</ToggleGroupItem>
+            <ToggleGroupItem value="weekly" className="text-xs px-2.5 h-7 data-[state=on]:bg-background data-[state=on]:shadow-sm">Hebdomadaire</ToggleGroupItem>
           </ToggleGroup>
 
           {!loading && data && data.length > 0 && (
@@ -83,7 +83,7 @@ export function TimeseriesChart({
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          <div className="w-full h-[300px] flex items-center justify-center text-muted-foreground">No data available</div>
+          <div className="w-full h-[300px] flex items-center justify-center text-muted-foreground">Aucune donnée disponible</div>
         )}
       </CardContent>
     </Card>

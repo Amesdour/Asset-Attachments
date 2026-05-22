@@ -34,30 +34,35 @@ export function LogsTable({
   const columns: ColumnDef<WasteLog>[] = [
     {
       accessorKey: "timestamp",
-      header: "Timestamp",
-      cell: ({ row }) => <span className="whitespace-nowrap">{format(new Date(row.original.timestamp), "MMM d, HH:mm")}</span>,
+      header: "Date / Heure",
+      cell: ({ row }) => <span className="whitespace-nowrap">{format(new Date(row.original.timestamp), "dd/MM/yyyy HH:mm")}</span>,
     },
-    { accessorKey: "truckId", header: "Truck ID", cell: ({ row }) => <span className="font-mono text-xs font-medium">{row.original.truckId}</span> },
-    { accessorKey: "site", header: "Site/Zone" },
-    { accessorKey: "wasteType", header: "Waste Type" },
+    { accessorKey: "truckId", header: "Immatriculation", cell: ({ row }) => <span className="font-mono text-xs font-medium">{row.original.truckId}</span> },
+    { accessorKey: "site", header: "Site" },
+    { accessorKey: "wasteType", header: "Type de déchet" },
     { accessorKey: "wasteCode", header: "Code", cell: ({ row }) => <span className="text-muted-foreground text-xs">{row.original.wasteCode}</span> },
     { 
       accessorKey: "weightMt", 
-      header: () => <div className="text-right">Weight (MT)</div>,
+      header: () => <div className="text-right">Poids net (t)</div>,
       cell: ({ row }) => <div className="text-right font-medium">{row.original.weightMt.toFixed(2)}</div>
     },
-    { accessorKey: "treatmentMethod", header: "Treatment Method" },
+    { accessorKey: "treatmentMethod", header: "Mode opératoire" },
     {
       accessorKey: "treatmentStatus",
-      header: "Status",
+      header: "Statut",
       cell: ({ row }) => {
         const status = row.original.treatmentStatus;
-        const isTreated = status.toLowerCase() === "treated";
+        const s = status.toLowerCase();
+        const isGood = s === "settled" || s === "paid" || s === "traité";
+        const isBad = s === "cancelled" || s === "annulé";
+        const label = s === "settled" ? "Réglé" : s === "paid" ? "Payé" : s === "cancelled" ? "Annulé" : status;
         return (
           <span className={`px-2 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
-            isTreated ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300" : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
+            isGood ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"
+            : isBad ? "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300"
+            : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
           }`}>
-            {status}
+            {label}
           </span>
         );
       },
@@ -81,7 +86,7 @@ export function LogsTable({
   return (
     <Card className="shadow-sm">
       <CardHeader className="px-5 pt-5 pb-3 flex flex-row items-center justify-between space-y-0 border-b border-border/50">
-        <CardTitle className="text-base font-semibold">Waste Collection Logs</CardTitle>
+        <CardTitle className="text-base font-semibold">Journal des décharges</CardTitle>
         {!loading && logs.length > 0 && (
           <CSVLink data={logs} filename="waste-logs.csv" className="print:hidden flex items-center justify-center w-7 h-7 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
             <Download className="w-3.5 h-3.5" />
@@ -124,7 +129,7 @@ export function LogsTable({
             </div>
             <div className="flex items-center justify-between px-5 py-3 border-t border-border/50 bg-muted/20">
               <div className="text-xs text-muted-foreground">
-                Showing <span className="font-medium text-foreground">{(page - 1) * pageSize + 1}</span> to <span className="font-medium text-foreground">{Math.min(page * pageSize, total)}</span> of <span className="font-medium text-foreground">{total}</span> entries
+                Affichage de <span className="font-medium text-foreground">{(page - 1) * pageSize + 1}</span> à <span className="font-medium text-foreground">{Math.min(page * pageSize, total)}</span> sur <span className="font-medium text-foreground">{total}</span> enregistrements
               </div>
               <div className="flex items-center gap-2">
                 <Button 
@@ -150,7 +155,7 @@ export function LogsTable({
           </>
         ) : (
           <div className="p-10 text-center text-muted-foreground">
-            No logs found matching your filters.
+            Aucun enregistrement correspondant aux filtres sélectionnés.
           </div>
         )}
       </CardContent>

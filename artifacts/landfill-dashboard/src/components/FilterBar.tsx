@@ -47,7 +47,7 @@ export function FilterBar({ filters, onChange }: { filters: DashboardFilters; on
   return (
     <div className="mb-6 flex flex-wrap items-end gap-4 p-4 bg-white dark:bg-card border rounded-lg shadow-sm">
       <div className="w-[280px]">
-        <Label className="text-[13px] mb-1.5 block text-muted-foreground font-medium">Date Range</Label>
+        <Label className="text-[13px] mb-1.5 block text-muted-foreground font-medium">Période</Label>
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" className="w-full justify-start text-left font-normal bg-background">
@@ -55,7 +55,7 @@ export function FilterBar({ filters, onChange }: { filters: DashboardFilters; on
               {dateRange.from && dateRange.to ? (
                 <>{format(dateRange.from, "MMM d, yyyy")} - {format(dateRange.to, "MMM d, yyyy")}</>
               ) : (
-                <span className="text-muted-foreground">Any time</span>
+                <span className="text-muted-foreground">Toute la période</span>
               )}
             </Button>
           </PopoverTrigger>
@@ -74,10 +74,10 @@ export function FilterBar({ filters, onChange }: { filters: DashboardFilters; on
         <Label className="text-[13px] mb-1.5 block text-muted-foreground font-medium">Site / Zone</Label>
         <Select value={filters.site || "all"} onValueChange={handleSiteChange}>
           <SelectTrigger className="bg-background">
-            <SelectValue placeholder="All Sites" />
+            <SelectValue placeholder="Tous les sites" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Sites</SelectItem>
+            <SelectItem value="all">Tous les sites</SelectItem>
             {filterOptions?.sites?.map(site => (
               <SelectItem key={site} value={site}>{site}</SelectItem>
             ))}
@@ -86,13 +86,13 @@ export function FilterBar({ filters, onChange }: { filters: DashboardFilters; on
       </div>
 
       <div className="w-[220px]">
-        <Label className="text-[13px] mb-1.5 block text-muted-foreground font-medium">Waste Type</Label>
+        <Label className="text-[13px] mb-1.5 block text-muted-foreground font-medium">Type de déchet</Label>
         <Select value={filters.wasteType || "all"} onValueChange={handleWasteTypeChange}>
           <SelectTrigger className="bg-background">
-            <SelectValue placeholder="All Types" />
+            <SelectValue placeholder="Tous les types" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="all">Tous les types</SelectItem>
             {filterOptions?.wasteTypes?.map(wt => (
               <SelectItem key={wt} value={wt}>{wt}</SelectItem>
             ))}
@@ -109,7 +109,7 @@ export function FilterBar({ filters, onChange }: { filters: DashboardFilters; on
           }}
           className="text-muted-foreground hover:text-foreground"
         >
-          Clear Filters
+          Effacer les filtres
         </Button>
       </div>
     </div>

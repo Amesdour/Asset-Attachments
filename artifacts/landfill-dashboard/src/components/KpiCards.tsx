@@ -7,25 +7,25 @@ import type { DashboardKpis } from "@workspace/api-client-react";
 export function KpiCards({ data, loading }: { data?: DashboardKpis; loading: boolean }) {
   const kpis = [
     {
-      title: "Waste Collected (Current Month)",
-      value: data ? `${(data.totalWasteCurrentMonth || 0).toLocaleString()} MT` : "--",
+      title: "Déchets collectés (mois en cours)",
+      value: data ? `${(data.totalWasteCurrentMonth || 0).toLocaleString()} t` : "--",
       change: data?.wasteTrend,
       icon: <Activity className="w-4 h-4 text-muted-foreground" />
     },
     {
-      title: "Active Fleet Operations",
+      title: "Opérations actives aujourd'hui",
       value: data ? data.activeOperationsToday.toLocaleString() : "--",
       change: null,
       icon: <Truck className="w-4 h-4 text-muted-foreground" />
     },
     {
-      title: "Landfill Capacity Used",
+      title: "Capacité CET utilisée",
       value: data ? `${(data.capacityUsedPercent || 0).toFixed(1)}%` : "--",
       progress: data?.capacityUsedPercent || 0,
       icon: <AlertTriangle className="w-4 h-4 text-muted-foreground" />
     },
     {
-      title: "Treatment Diversion Rate",
+      title: "Taux de règlement",
       value: data ? `${(data.diversionRate || 0).toFixed(1)}%` : "--",
       change: data?.diversionRateTrend,
       icon: <Activity className="w-4 h-4 text-muted-foreground" />
@@ -73,7 +73,7 @@ export function KpiCards({ data, loading }: { data?: DashboardKpis; loading: boo
                     <span className={`text-sm font-medium ${kpi.change >= 0 ? "text-green-600" : "text-red-600"}`}>
                       {Math.abs(kpi.change).toFixed(1)}%
                     </span>
-                    <span className="text-xs text-muted-foreground">vs last period</span>
+                    <span className="text-xs text-muted-foreground">vs période préc.</span>
                   </div>
                 ) : (
                   <div className="h-6 mt-2" />

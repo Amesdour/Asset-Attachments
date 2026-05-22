@@ -30,11 +30,11 @@ export function TreatmentMethodChart({ data, loading }: { data?: TreatmentMethod
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "6px", color: isDark ? "#9ca3af" : "#4b5563" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: "16px" }}>
-            <span>Volume:</span>
-            <span style={{ fontWeight: 500, color: isDark ? "#f3f4f6" : "#111827" }}>{entry.value.toLocaleString()} MT</span>
+            <span>Volume :</span>
+            <span style={{ fontWeight: 500, color: isDark ? "#f3f4f6" : "#111827" }}>{entry.value.toLocaleString()} t</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", gap: "16px" }}>
-            <span>Share:</span>
+            <span>Part :</span>
             <span style={{ fontWeight: 500, color: isDark ? "#f3f4f6" : "#111827" }}>{entry.percent.toFixed(1)}%</span>
           </div>
         </div>
@@ -62,7 +62,7 @@ export function TreatmentMethodChart({ data, loading }: { data?: TreatmentMethod
   return (
     <Card className="col-span-1 shadow-sm">
       <CardHeader className="px-5 pt-5 pb-3 flex flex-row items-center justify-between space-y-0 border-b border-border/50">
-        <CardTitle className="text-base font-semibold">Treatment Methods</CardTitle>
+        <CardTitle className="text-base font-semibold">Modes de paiement</CardTitle>
         {!loading && data && data.length > 0 && (
           <CSVLink data={data} filename="treatment-methods.csv" className="print:hidden flex items-center justify-center w-7 h-7 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
             <Download className="w-3.5 h-3.5" />
@@ -97,7 +97,7 @@ export function TreatmentMethodChart({ data, loading }: { data?: TreatmentMethod
             </PieChart>
           </ResponsiveContainer>
         ) : (
-          <div className="w-full h-[300px] flex items-center justify-center text-muted-foreground">No data available</div>
+          <div className="w-full h-[300px] flex items-center justify-center text-muted-foreground">Aucune donnée disponible</div>
         )}
       </CardContent>
     </Card>

@@ -487,73 +487,73 @@ router.post("/ai-insights", async (req: Request, res: Response): Promise<void> =
   const weightLimitClients = weightLimitRow.rows as Record<string, unknown>[];
 
   const insights = [
-    // 1. Financial — overdue invoices
+    // 1. Factures impayées
     {
       category: "finance",
       severity: outstandingAmt > 500000 ? "critical" : outstandingAmt > 100000 ? "warning" : "info",
-      title: outstandingAmt > 0 ? `${outstandingAmt.toLocaleString("fr-DZ")} DZD Outstanding` : "All Invoices Settled",
+      title: outstandingAmt > 0 ? `${outstandingAmt.toLocaleString("fr-DZ")} DZD en attente de règlement` : "Toutes les factures sont réglées",
       metric: outstandingAmt > 0 ? `${outstandingAmt.toLocaleString("fr-DZ")} DZD` : "0 DZD",
       description: outstandingAmt > 0
-        ? `${overdueCount} invoice(s) overdue. Clients with outstanding balances: ${debtorList || "see billing panel"}. Escalate the largest debts to management and block new convention discharges for clients overdue beyond 30 days until payment is received.`
-        : "All client invoices are settled. No outstanding balances detected.",
-      action: outstandingAmt > 0 ? "Block discharges for overdue clients & escalate to finance" : "No action required",
+        ? `${overdueCount} facture(s) en retard. Clients avec soldes impayés : ${debtorList || "voir tableau de facturation"}. Escalader les créances les plus importantes à la direction et bloquer les nouveaux dépôts par convention pour les clients en retard de plus de 30 jours jusqu'à réception du paiement.`
+        : "Toutes les factures clients sont réglées. Aucun solde impayé détecté.",
+      action: outstandingAmt > 0 ? "Bloquer les décharges pour les clients en retard & escalader à la direction financière" : "Aucune action requise",
     },
-    // 2. Cancellation rate
+    // 2. Taux d'annulation
     {
       category: "operations",
       severity: cancellationRate > 20 ? "warning" : "info",
-      title: cancellationRate > 20 ? `${cancellationRate.toFixed(1)}% Cancellation Rate — Review Required` : `Cancellation Rate: ${cancellationRate.toFixed(1)}%`,
-      metric: `${cancellationRate.toFixed(1)}% cancelled`,
+      title: cancellationRate > 20 ? `Taux d'annulation ${cancellationRate.toFixed(1)}% — Révision requise` : `Taux d'annulation : ${cancellationRate.toFixed(1)}%`,
+      metric: `${cancellationRate.toFixed(1)}% annulés`,
       description: cancellationRate > 20
-        ? `${cancelledCount} of ${totalCount} discharge records were cancelled in the last 30 days. ${opCancelId ? `Operator ${opCancelId} has the highest cancellation rate at ${opCancelRate}%.` : ""} Audit correction reasons and add mandatory reason codes to reduce errors at entry.`
-        : `${cancelledCount} of ${totalCount} discharges cancelled. ${opCancelId && opCancelRate > 30 ? `Monitor operator ${opCancelId} (${opCancelRate}% rate).` : "Cancellation frequency is within normal operational range."}`,
-      action: cancellationRate > 20 ? `Audit operator entries — review ${cancelledCount} cancelled records` : "Monitor monthly",
+        ? `${cancelledCount} sur ${totalCount} bons de décharge ont été annulés au cours des 30 derniers jours. ${opCancelId ? `L'opérateur ${opCancelId} a le taux d'annulation le plus élevé à ${opCancelRate}%.` : ""} Auditer les motifs de correction et ajouter des codes de raison obligatoires pour réduire les erreurs de saisie.`
+        : `${cancelledCount} sur ${totalCount} décharges annulées. ${opCancelId && opCancelRate > 30 ? `Surveiller l'opérateur ${opCancelId} (taux : ${opCancelRate}%).` : "La fréquence d'annulation est dans la plage opérationnelle normale."}`,
+      action: cancellationRate > 20 ? `Auditer les saisies des opérateurs — réviser les ${cancelledCount} bons annulés` : "Surveiller mensuellement",
     },
-    // 3. Weight limits
+    // 3. Limites de tonnage annuel
     {
       category: "compliance",
       severity: weightLimitClients.length > 0 ? "warning" : "info",
       title: weightLimitClients.length > 0
-        ? `${weightLimitClients.length} Client(s) Near Annual Tonnage Limit`
-        : "All Clients Within Annual Tonnage Limits",
+        ? `${weightLimitClients.length} client(s) proche(s) de la limite de tonnage annuel`
+        : "Tous les clients dans les limites de tonnage annuel",
       metric: weightLimitClients.length > 0
         ? `${weightLimitClients.map((c) => `${String(c.name).split(" ")[0]}: ${parseFloat(String(c.discharged_t ?? 0)).toFixed(0)}/${parseFloat(String(c.weight_limit_year ?? 0)).toFixed(0)} t`).join(" · ")}`
-        : "No limit breaches",
+        : "Aucun dépassement",
       description: weightLimitClients.length > 0
-        ? `The following clients have consumed ≥70% of their annual weight limit: ${weightLimitClients.map((c) => `${c.name} (${parseFloat(String(c.discharged_t ?? 0)).toFixed(0)} t of ${parseFloat(String(c.weight_limit_year ?? 0)).toFixed(0)} t limit)`).join("; ")}. Contact clients to renegotiate contract terms or reduce weekly discharge frequency before the limit is reached.`
-        : "No clients are approaching their annual weight limits. Schedule yearly reviews before the end of the calendar year.",
-      action: weightLimitClients.length > 0 ? "Contact clients to renegotiate limits before breach" : "No action required",
+        ? `Les clients suivants ont consommé ≥70% de leur limite de tonnage annuel : ${weightLimitClients.map((c) => `${c.name} (${parseFloat(String(c.discharged_t ?? 0)).toFixed(0)} t sur ${parseFloat(String(c.weight_limit_year ?? 0)).toFixed(0)} t autorisées)`).join(" ; ")}. Contacter ces clients pour renégocier les termes contractuels ou réduire la fréquence hebdomadaire de décharge avant d'atteindre la limite.`
+        : "Aucun client n'approche ses limites de tonnage annuelles. Planifier les révisions annuelles avant la fin de l'année civile.",
+      action: weightLimitClients.length > 0 ? "Contacter les clients pour renégocier les limites avant dépassement" : "Aucune action requise",
     },
-    // 4. Site revenue performance
+    // 4. Performance financière par site
     {
       category: "revenue",
       severity: "info",
-      title: topSite ? `${String(topSite.name)} Highest Revenue Site` : "Site Revenue Overview",
-      metric: topSite ? `${parseFloat(String(topSite.total_rev ?? 0)).toLocaleString("fr-DZ")} DZD · ${parseFloat(String(topSite.rev_per_t ?? 0)).toLocaleString()} DZD/t` : "N/A",
+      title: topSite ? `${String(topSite.name)} — Site le plus rentable` : "Aperçu des revenus par site",
+      metric: topSite ? `${parseFloat(String(topSite.total_rev ?? 0)).toLocaleString("fr-DZ")} DZD · ${parseFloat(String(topSite.rev_per_t ?? 0)).toLocaleString()} DZD/t` : "N/D",
       description: topSite
-        ? `${String(topSite.name)} generated ${parseFloat(String(topSite.total_rev ?? 0)).toLocaleString("fr-DZ")} DZD at ${parseFloat(String(topSite.rev_per_t ?? 0)).toLocaleString()} DZD/t.${bottomSite && bottomSite.site_id !== topSite.site_id ? ` ${String(bottomSite.name)} is the lowest at ${parseFloat(String(bottomSite.rev_per_t ?? 0)).toLocaleString()} DZD/t — consider reviewing pricing or increasing industrial client allocation there.` : ""}`
-        : "Insufficient data for site revenue comparison.",
-      action: "Review pricing tiers for lower-performing sites",
+        ? `${String(topSite.name)} a généré ${parseFloat(String(topSite.total_rev ?? 0)).toLocaleString("fr-DZ")} DZD à ${parseFloat(String(topSite.rev_per_t ?? 0)).toLocaleString()} DZD/t.${bottomSite && bottomSite.site_id !== topSite.site_id ? ` ${String(bottomSite.name)} affiche le tarif le plus bas à ${parseFloat(String(bottomSite.rev_per_t ?? 0)).toLocaleString()} DZD/t — envisager une révision tarifaire ou une augmentation de l'allocation clients industriels sur ce site.` : ""}`
+        : "Données insuffisantes pour la comparaison des revenus par site.",
+      action: "Réviser les grilles tarifaires des sites les moins performants",
     },
-    // 5. Waste type revenue
+    // 5. Revenus par type de déchet
     {
       category: "revenue",
       severity: "info",
-      title: topWaste ? `${String(topWaste.label ?? topWaste.waste_type)} is Highest-Value Waste Stream` : "Waste Revenue Analysis",
-      metric: topWaste ? `${parseFloat(String(topWaste.rev_per_t ?? 0)).toLocaleString()} DZD/t` : "N/A",
+      title: topWaste ? `${String(topWaste.label ?? topWaste.waste_type)} — Flux de déchet le plus rentable` : "Analyse des revenus par type de déchet",
+      metric: topWaste ? `${parseFloat(String(topWaste.rev_per_t ?? 0)).toLocaleString()} DZD/t` : "N/D",
       description: wasteRevRows.length > 0
-        ? `Revenue by waste type: ${wasteRevRows.map((w) => `${String(w.label ?? w.waste_type)}: ${parseFloat(String(w.rev_per_t ?? 0)).toLocaleString()} DZD/t (${parseFloat(String(w.total_t ?? 0)).toFixed(0)} t)`).join(" · ")}. Prioritise attracting higher-rate waste streams such as ${String(topWaste?.label ?? "Industrial")} to maximise revenue per discharge.`
-        : "No waste revenue data available.",
-      action: "Target industrial/medical clients to increase avg revenue per tonne",
+        ? `Revenus par type de déchet : ${wasteRevRows.map((w) => `${String(w.label ?? w.waste_type)} : ${parseFloat(String(w.rev_per_t ?? 0)).toLocaleString()} DZD/t (${parseFloat(String(w.total_t ?? 0)).toFixed(0)} t)`).join(" · ")}. Prioriser l'attraction de flux à tarif élevé tels que ${String(topWaste?.label ?? "Industriel")} pour maximiser les revenus par décharge.`
+        : "Aucune donnée de revenus par type de déchet disponible.",
+      action: "Cibler les clients industriels/médicaux pour augmenter le revenu moyen par tonne",
     },
-    // 6. Capacity outlook
+    // 6. Perspectives de capacité à long terme
     {
       category: "capacity",
       severity: "info",
-      title: "Long-Term Capacity Outlook: Stable",
-      metric: `${siteRevRows.reduce((s, r) => s + parseFloat(String(r.total_t ?? 0)), 0).toFixed(0)} t discharged`,
-      description: `Total active site capacity is ${(180000000).toLocaleString()} t across 4 sites. At the current monthly intake rate, all sites have decades of remaining operational capacity. Focus capacity planning on infrastructure maintenance cycles, leachate management, and regulatory compliance reviews rather than expansion.`,
-      action: "Schedule annual environmental compliance audits per site",
+      title: "Perspectives de capacité à long terme : Stable",
+      metric: `${siteRevRows.reduce((s, r) => s + parseFloat(String(r.total_t ?? 0)), 0).toFixed(0)} t déchargées`,
+      description: `La capacité totale des sites actifs est de ${(180000000).toLocaleString("fr-DZ")} t répartis sur 4 sites. Au rythme mensuel d'admission actuel, tous les sites disposent de plusieurs décennies de capacité résiduelle. La planification capacitaire devrait se concentrer sur les cycles de maintenance des infrastructures, la gestion du lixiviat et les révisions réglementaires environnementales plutôt que sur l'extension.`,
+      action: "Planifier les audits de conformité environnementale annuels par site",
     },
   ];
 

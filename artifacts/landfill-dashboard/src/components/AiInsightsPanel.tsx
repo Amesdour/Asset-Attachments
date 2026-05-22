@@ -7,17 +7,17 @@ import { useGetAiInsights } from "@workspace/api-client-react";
 
 const CATEGORY_LABELS: Record<string, string> = {
   finance: "Finance",
-  operations: "Ops",
-  compliance: "Compliance",
-  revenue: "Revenue",
-  capacity: "Capacity",
-  billing: "Billing",
+  operations: "Opérations",
+  compliance: "Conformité",
+  revenue: "Revenus",
+  capacity: "Capacité",
+  billing: "Facturation",
   client: "Client",
-  payment: "Payment",
+  payment: "Paiement",
   volume: "Volume",
-  anomaly: "Anomaly",
-  routing: "Routing",
-  recycling: "Recycling",
+  anomaly: "Anomalie",
+  routing: "Routage",
+  recycling: "Recyclage",
 };
 
 export function AiInsightsPanel({ statsObject }: { statsObject: any }) {
@@ -66,10 +66,10 @@ export function AiInsightsPanel({ statsObject }: { statsObject: any }) {
       <CardHeader className="px-5 py-4 flex flex-row items-center justify-between border-b border-border/50 bg-gradient-to-r from-slate-50 to-transparent dark:from-slate-900/40 dark:to-transparent">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-primary" />
-          <CardTitle className="text-base font-semibold">Operational Insights</CardTitle>
+          <CardTitle className="text-base font-semibold">Analyse opérationnelle</CardTitle>
           {mutation.data?.insights && (
             <span className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-full">
-              {mutation.data.insights.length} findings
+              {mutation.data.insights.length} observations
             </span>
           )}
         </div>
@@ -81,7 +81,7 @@ export function AiInsightsPanel({ statsObject }: { statsObject: any }) {
           className="h-7 text-xs font-medium gap-1.5"
         >
           <RefreshCw className={`w-3 h-3 ${mutation.isPending ? "animate-spin" : ""}`} />
-          Refresh
+          Actualiser
         </Button>
       </CardHeader>
 
@@ -140,13 +140,13 @@ export function AiInsightsPanel({ statsObject }: { statsObject: any }) {
         ) : (
           <div className="py-10 text-center text-muted-foreground">
             <Sparkles className="w-8 h-8 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Click refresh to analyse current operations</p>
+            <p className="text-sm">Cliquez sur Actualiser pour analyser les opérations en cours</p>
           </div>
         )}
 
         {mutation.data?.generatedAt && (
           <p className="text-[10px] text-muted-foreground/60 mt-3 text-right">
-            Generated {new Date(mutation.data.generatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+            Généré à {new Date(mutation.data.generatedAt).toLocaleTimeString("fr-DZ", { hour: "2-digit", minute: "2-digit" })}
           </p>
         )}
       </CardContent>

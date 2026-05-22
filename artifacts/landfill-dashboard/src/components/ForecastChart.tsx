@@ -11,9 +11,9 @@ import type { ForecastResult } from "@workspace/api-client-react";
 
 function YearsLabel({ years }: { years: number }) {
   if (years >= 9999) return <span className="text-green-600 dark:text-green-400 font-semibold text-xs">Stable ∞</span>;
-  if (years > 100) return <span className="text-green-600 dark:text-green-400 font-semibold text-xs">{Math.round(years)}y remaining</span>;
-  if (years > 30) return <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs">{Math.round(years)}y remaining</span>;
-  return <span className="text-red-600 dark:text-red-400 font-semibold text-xs">{Math.round(years)}y remaining</span>;
+  if (years > 100) return <span className="text-green-600 dark:text-green-400 font-semibold text-xs">{Math.round(years)} ans restants</span>;
+  if (years > 30) return <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs">{Math.round(years)} ans restants</span>;
+  return <span className="text-red-600 dark:text-red-400 font-semibold text-xs">{Math.round(years)} ans restants</span>;
 }
 
 export function ForecastChart({ data, loading }: { data?: ForecastResult; loading: boolean }) {
@@ -44,7 +44,7 @@ export function ForecastChart({ data, loading }: { data?: ForecastResult; loadin
       <div style={{ background: isDark ? "#1f2937" : "#fff", borderRadius: 8, padding: "10px 14px", border: `1px solid ${gridColor}`, fontSize: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
         <div style={{ fontWeight: 600, marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
           {format(new Date(label), "MMM yyyy")}
-          {isForecast && <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "rgba(245,158,11,0.15)", color: "#d97706" }}>Projected</span>}
+          {isForecast && <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "rgba(245,158,11,0.15)", color: "#d97706" }}>Projeté</span>}
         </div>
         {payload.map((p: any, i: number) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
@@ -68,9 +68,9 @@ export function ForecastChart({ data, loading }: { data?: ForecastResult; loadin
           <div>
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-primary" />
-              Capacity & Revenue Forecast
+              Prévisions capacité & revenus
             </CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">Solid = historical · Dashed = 12-month projection</p>
+            <p className="text-xs text-muted-foreground mt-1">Trait plein = historique · Pointillé = projection 12 mois</p>
           </div>
         </div>
       </CardHeader>
@@ -79,7 +79,7 @@ export function ForecastChart({ data, loading }: { data?: ForecastResult; loadin
         <div className="bg-red-50 dark:bg-red-950/50 border-b border-red-200 dark:border-red-900 px-5 py-3 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
           <p className="text-sm font-medium text-red-800 dark:text-red-300">
-            Capacity will be reached in {data.warningMonths} months — begin expansion planning immediately.
+            La capacité sera atteinte dans {data.warningMonths} mois — lancer immédiatement la planification d'extension.
           </p>
         </div>
       )}
@@ -96,12 +96,12 @@ export function ForecastChart({ data, loading }: { data?: ForecastResult; loadin
               <YAxis yAxisId="rev" orientation="right" tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} tick={{ fontSize: 11, fill: tickColor }} axisLine={false} tickLine={false} dx={4} width={48} />
               <Tooltip content={<VolumeTooltip />} isAnimationActive={false} />
               <Legend iconType="line" wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-              <Line yAxisId="vol" type="monotone" dataKey="cumulativeVolume" name="Cumulative Volume (t)" stroke="#3b82f6" strokeWidth={2.5} dot={false} strokeDasharray={(d: any) => d?.isForecast ? "6 3" : "0"} isAnimationActive={false} />
-              <Line yAxisId="rev" type="monotone" dataKey="revenue" name="Monthly Revenue (DZD)" stroke="#10b981" strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
+              <Line yAxisId="vol" type="monotone" dataKey="cumulativeVolume" name="Volume cumulé (t)" stroke="#3b82f6" strokeWidth={2.5} dot={false} strokeDasharray={(d: any) => d?.isForecast ? "6 3" : "0"} isAnimationActive={false} />
+              <Line yAxisId="rev" type="monotone" dataKey="revenue" name="Revenus mensuels (DZD)" stroke="#10b981" strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
             </ComposedChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-[260px] flex items-center justify-center text-muted-foreground text-sm">No forecast data</div>
+          <div className="h-[260px] flex items-center justify-center text-muted-foreground text-sm">Aucune donnée de prévision disponible</div>
         )}
 
         {/* Per-site capacity bars */}
@@ -109,7 +109,7 @@ export function ForecastChart({ data, loading }: { data?: ForecastResult; loadin
           <div>
             <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
               <Clock className="w-4 h-4 text-muted-foreground" />
-              Per-Site Capacity Status
+              État de capacité par site
             </h4>
             <div className="space-y-3">
               {data.siteProjections.map((site) => {
@@ -124,7 +124,7 @@ export function ForecastChart({ data, loading }: { data?: ForecastResult; loadin
                         <span className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">{site.siteId}</span>
                       </div>
                       <div className="flex items-center gap-3 text-right">
-                        <span className="text-xs text-muted-foreground">{site.monthlyRateMt.toFixed(0)} t/mo</span>
+                        <span className="text-xs text-muted-foreground">{site.monthlyRateMt.toFixed(0)} t/mois</span>
                         <YearsLabel years={site.yearsUntilFull} />
                       </div>
                     </div>
@@ -135,8 +135,8 @@ export function ForecastChart({ data, loading }: { data?: ForecastResult; loadin
                       />
                     </div>
                     <div className="flex justify-between mt-0.5">
-                      <span className="text-[10px] text-muted-foreground">{site.usedMt.toLocaleString()} t used</span>
-                      <span className="text-[10px] text-muted-foreground">{site.pctUsed.toFixed(3)}% of {(site.capacityMt / 1000000).toFixed(0)}M t capacity</span>
+                      <span className="text-[10px] text-muted-foreground">{site.usedMt.toLocaleString()} t utilisées</span>
+                      <span className="text-[10px] text-muted-foreground">{site.pctUsed.toFixed(3)}% de {(site.capacityMt / 1000000).toFixed(0)}M t de capacité</span>
                     </div>
                   </div>
                 );

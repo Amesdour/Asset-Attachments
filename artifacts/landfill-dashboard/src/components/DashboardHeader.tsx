@@ -3,13 +3,13 @@ import { RefreshCw, ChevronDown, Printer, Sun, Moon, Check } from "lucide-react"
 import { useTheme } from "next-themes";
 import { useQueryClient } from "@tanstack/react-query";
 
-const DATA_SOURCES = ["App DB", "Weighbridge API"];
+const DATA_SOURCES = ["Base de données", "API Pont-bascule"];
 
 const INTERVAL_OPTIONS = [
-  { label: "Off", ms: 0 },
-  { label: "Every 5 min", ms: 5 * 60 * 1000 },
-  { label: "Every 15 min", ms: 15 * 60 * 1000 },
-  { label: "Every 30 min", ms: 30 * 60 * 1000 },
+  { label: "Désactivé", ms: 0 },
+  { label: "Toutes les 5 min", ms: 5 * 60 * 1000 },
+  { label: "Toutes les 15 min", ms: 15 * 60 * 1000 },
+  { label: "Toutes les 30 min", ms: 30 * 60 * 1000 },
 ];
 
 export function DashboardHeader({ lastRefreshed, isSpinning, onRefresh }: { lastRefreshed: string | null; isSpinning: boolean; onRefresh: () => void }) {
@@ -47,12 +47,12 @@ export function DashboardHeader({ lastRefreshed, isSpinning, onRefresh }: { last
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-x-4 gap-y-4">
       <div className="pt-2">
-        <h1 className="font-bold text-[32px] tracking-tight text-foreground">Waste Operations</h1>
-        <p className="text-muted-foreground mt-1 text-[15px]">Landfill Command Center</p>
+        <h1 className="font-bold text-[32px] tracking-tight text-foreground">Opérations de Déchets</h1>
+        <p className="text-muted-foreground mt-1 text-[15px]">Centre de contrôle — EWGCET Jijel</p>
         
         {DATA_SOURCES.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 mt-3">
-            <span className="text-[12px] text-muted-foreground shrink-0 font-medium">Data Sources:</span>
+            <span className="text-[12px] text-muted-foreground shrink-0 font-medium">Sources :</span>
             {DATA_SOURCES.map((source) => (
               <span
                 key={source}
@@ -71,7 +71,7 @@ export function DashboardHeader({ lastRefreshed, isSpinning, onRefresh }: { last
         )}
         
         {lastRefreshed && (
-          <p className="text-[12px] text-muted-foreground mt-2">Last refresh: {lastRefreshed}</p>
+          <p className="text-[12px] text-muted-foreground mt-2">Dernière actualisation : {lastRefreshed}</p>
         )}
       </div>
 
@@ -83,7 +83,7 @@ export function DashboardHeader({ lastRefreshed, isSpinning, onRefresh }: { last
           >
             <button onClick={onRefresh} className="flex items-center gap-1.5 px-3 h-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
               <RefreshCw className={`w-3.5 h-3.5 ${isSpinning ? "animate-spin" : ""}`} />
-              Refresh
+              Actualiser
             </button>
             <div className="w-px h-4 shrink-0" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)" }} />
             <button onClick={() => setDropdownOpen((o) => !o)} className="flex items-center justify-center px-2 h-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
@@ -94,7 +94,7 @@ export function DashboardHeader({ lastRefreshed, isSpinning, onRefresh }: { last
           {dropdownOpen && (
             <div className="absolute right-0 top-full mt-1 w-48 rounded-md border bg-popover shadow-md z-50 py-1">
               <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Auto-Refresh
+                Actualisation auto
               </div>
               {INTERVAL_OPTIONS.map(opt => (
                 <button
