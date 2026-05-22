@@ -252,6 +252,103 @@ export interface RevenueBreakdown {
   invoiceSummary: RevenueBreakdownInvoiceSummary;
 }
 
+export type AdvancedForecastResultHistoricalMonthlyItem = {
+  month: string;
+  volume: number;
+  revenue: number;
+  count: number;
+};
+
+export type AdvancedForecastResultForecastMonthlyItem = {
+  month: string;
+  base: number;
+  lower80: number;
+  upper80: number;
+  lower95: number;
+  upper95: number;
+  pessimistic: number;
+  optimistic: number;
+  revenue: number;
+};
+
+export type AdvancedForecastResultAnnualForecastsItem = {
+  year: number;
+  baseVolume: number;
+  pessimisticVolume: number;
+  optimisticVolume: number;
+  lower95Volume: number;
+  upper95Volume: number;
+  baseRevenue: number;
+  growthVsBase: number;
+};
+
+export type AdvancedForecastResultSiteProjectionsItem = {
+  siteId: string;
+  siteName: string;
+  region: string;
+  usedMt: number;
+  capacityMt: number;
+  pctUsed: number;
+  monthlyRateMt: number;
+  trendMtPerMonth: number;
+  /** @nullable */
+  yearsUntilFull_base?: number | null;
+  /** @nullable */
+  yearsUntilFull_pessimistic?: number | null;
+  /** @nullable */
+  yearsUntilFull_optimistic?: number | null;
+  /** @nullable */
+  exhaustionYear_base?: number | null;
+  /** @nullable */
+  exhaustionYear_pessimistic?: number | null;
+  /** @nullable */
+  exhaustionYear_optimistic?: number | null;
+};
+
+export type AdvancedForecastResultWasteTypeForecastItemAnnualVolumesItem = {
+  year: number;
+  volume: number;
+};
+
+export type AdvancedForecastResultWasteTypeForecastItem = {
+  wasteType: string;
+  label: string;
+  avgMonthlyMt: number;
+  annualForecastMt: number;
+  trendSlope: number;
+  trendDir: string;
+  totalHistoricalMt: number;
+  annualVolumes: AdvancedForecastResultWasteTypeForecastItemAnnualVolumesItem[];
+};
+
+export type AdvancedForecastResultModelStats = {
+  algorithm: string;
+  monthlyDataPoints: number;
+  alpha?: number;
+  beta?: number;
+  rSquared: number;
+  mape: number;
+  trendDirection: string;
+  trendMtPerMonth: number;
+  annualGrowthRatePct: number;
+  currentLevelMt: number;
+  seasonalPatternDetected: boolean;
+  totalCapacityMt: number;
+  totalUsedMt: number;
+  globalPctUsed: number;
+  revenueGrowthRatePct: number;
+};
+
+export interface AdvancedForecastResult {
+  horizonYears: number;
+  historicalMonthly: AdvancedForecastResultHistoricalMonthlyItem[];
+  forecastMonthly: AdvancedForecastResultForecastMonthlyItem[];
+  annualForecasts: AdvancedForecastResultAnnualForecastsItem[];
+  siteProjections: AdvancedForecastResultSiteProjectionsItem[];
+  wasteTypeForecast: AdvancedForecastResultWasteTypeForecastItem[];
+  modelStats: AdvancedForecastResultModelStats;
+}
+
 export type GetDashboardKpisParams = {
 dateFrom?: string;
 dateTo?: string;
@@ -290,6 +387,10 @@ site?: string;
 
 export type GetDashboardForecastParams = {
 months?: number;
+};
+
+export type GetDashboardForecastAdvancedParams = {
+years?: number;
 };
 
 export type GetDashboardLogsParams = {

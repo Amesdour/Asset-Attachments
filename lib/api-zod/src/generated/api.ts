@@ -144,6 +144,91 @@ export const GetDashboardForecastResponse = zod.object({
 
 
 /**
+ * @summary Smart multi-year forecasting with Holt-Winters + confidence intervals
+ */
+export const GetDashboardForecastAdvancedQueryParams = zod.object({
+  "years": zod.coerce.number().optional()
+})
+
+export const GetDashboardForecastAdvancedResponse = zod.object({
+  "horizonYears": zod.number(),
+  "historicalMonthly": zod.array(zod.object({
+  "month": zod.string(),
+  "volume": zod.number(),
+  "revenue": zod.number(),
+  "count": zod.number()
+})),
+  "forecastMonthly": zod.array(zod.object({
+  "month": zod.string(),
+  "base": zod.number(),
+  "lower80": zod.number(),
+  "upper80": zod.number(),
+  "lower95": zod.number(),
+  "upper95": zod.number(),
+  "pessimistic": zod.number(),
+  "optimistic": zod.number(),
+  "revenue": zod.number()
+})),
+  "annualForecasts": zod.array(zod.object({
+  "year": zod.number(),
+  "baseVolume": zod.number(),
+  "pessimisticVolume": zod.number(),
+  "optimisticVolume": zod.number(),
+  "lower95Volume": zod.number(),
+  "upper95Volume": zod.number(),
+  "baseRevenue": zod.number(),
+  "growthVsBase": zod.number()
+})),
+  "siteProjections": zod.array(zod.object({
+  "siteId": zod.string(),
+  "siteName": zod.string(),
+  "region": zod.string(),
+  "usedMt": zod.number(),
+  "capacityMt": zod.number(),
+  "pctUsed": zod.number(),
+  "monthlyRateMt": zod.number(),
+  "trendMtPerMonth": zod.number(),
+  "yearsUntilFull_base": zod.number().nullish(),
+  "yearsUntilFull_pessimistic": zod.number().nullish(),
+  "yearsUntilFull_optimistic": zod.number().nullish(),
+  "exhaustionYear_base": zod.number().nullish(),
+  "exhaustionYear_pessimistic": zod.number().nullish(),
+  "exhaustionYear_optimistic": zod.number().nullish()
+})),
+  "wasteTypeForecast": zod.array(zod.object({
+  "wasteType": zod.string(),
+  "label": zod.string(),
+  "avgMonthlyMt": zod.number(),
+  "annualForecastMt": zod.number(),
+  "trendSlope": zod.number(),
+  "trendDir": zod.string(),
+  "totalHistoricalMt": zod.number(),
+  "annualVolumes": zod.array(zod.object({
+  "year": zod.number(),
+  "volume": zod.number()
+}))
+})),
+  "modelStats": zod.object({
+  "algorithm": zod.string(),
+  "monthlyDataPoints": zod.number(),
+  "alpha": zod.number().optional(),
+  "beta": zod.number().optional(),
+  "rSquared": zod.number(),
+  "mape": zod.number(),
+  "trendDirection": zod.string(),
+  "trendMtPerMonth": zod.number(),
+  "annualGrowthRatePct": zod.number(),
+  "currentLevelMt": zod.number(),
+  "seasonalPatternDetected": zod.boolean(),
+  "totalCapacityMt": zod.number(),
+  "totalUsedMt": zod.number(),
+  "globalPctUsed": zod.number(),
+  "revenueGrowthRatePct": zod.number()
+})
+})
+
+
+/**
  * @summary Get recent waste collection logs
  */
 export const GetDashboardLogsQueryParams = zod.object({

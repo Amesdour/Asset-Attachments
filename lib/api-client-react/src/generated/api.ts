@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdvancedForecastResult,
   AiInsightsRequest,
   AiInsightsResult,
   ClientRanking,
@@ -27,6 +28,7 @@ import type {
   FilterOptions,
   ForecastResult,
   GetDashboardClientsRankingParams,
+  GetDashboardForecastAdvancedParams,
   GetDashboardForecastParams,
   GetDashboardKpisParams,
   GetDashboardLogsParams,
@@ -544,6 +546,90 @@ export function useGetDashboardForecast<TData = Awaited<ReturnType<typeof getDas
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDashboardForecastQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetDashboardForecastAdvancedUrl = (params?: GetDashboardForecastAdvancedParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/dashboard/forecast-advanced?${stringifiedParams}` : `/api/dashboard/forecast-advanced`
+}
+
+/**
+ * @summary Smart multi-year forecasting with Holt-Winters + confidence intervals
+ */
+export const getDashboardForecastAdvanced = async (params?: GetDashboardForecastAdvancedParams, options?: RequestInit): Promise<AdvancedForecastResult> => {
+
+  return customFetch<AdvancedForecastResult>(getGetDashboardForecastAdvancedUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDashboardForecastAdvancedQueryKey = (params?: GetDashboardForecastAdvancedParams,) => {
+    return [
+    `/api/dashboard/forecast-advanced`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDashboardForecastAdvancedQueryOptions = <TData = Awaited<ReturnType<typeof getDashboardForecastAdvanced>>, TError = ErrorType<unknown>>(params?: GetDashboardForecastAdvancedParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardForecastAdvanced>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDashboardForecastAdvancedQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDashboardForecastAdvanced>>> = ({ signal }) => getDashboardForecastAdvanced(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDashboardForecastAdvanced>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDashboardForecastAdvancedQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardForecastAdvanced>>>
+export type GetDashboardForecastAdvancedQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Smart multi-year forecasting with Holt-Winters + confidence intervals
+ */
+
+export function useGetDashboardForecastAdvanced<TData = Awaited<ReturnType<typeof getDashboardForecastAdvanced>>, TError = ErrorType<unknown>>(
+ params?: GetDashboardForecastAdvancedParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardForecastAdvanced>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDashboardForecastAdvancedQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

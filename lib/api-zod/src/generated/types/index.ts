@@ -6,6 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './advancedForecastResult';
+export * from './advancedForecastResultAnnualForecastsItem';
+export * from './advancedForecastResultForecastMonthlyItem';
+export * from './advancedForecastResultHistoricalMonthlyItem';
+export * from './advancedForecastResultModelStats';
+export * from './advancedForecastResultSiteProjectionsItem';
+export * from './advancedForecastResultWasteTypeForecastItem';
+export * from './advancedForecastResultWasteTypeForecastItemAnnualVolumesItem';
 export * from './aiInsightsRequest';
 export * from './aiInsightsRequestFilters';
 export * from './aiInsightsResult';
@@ -17,6 +25,7 @@ export * from './filterOptionsWasteTypesItem';
 export * from './forecastPoint';
 export * from './forecastResult';
 export * from './getDashboardClientsRankingParams';
+export * from './getDashboardForecastAdvancedParams';
 export * from './getDashboardForecastParams';
 export * from './getDashboardKpisParams';
 export * from './getDashboardLogsParams';

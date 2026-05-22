@@ -13,6 +13,7 @@ import { SitesBreakdown } from "@/components/SitesBreakdown";
 import { RevenueBreakdown } from "@/components/RevenueBreakdown";
 import { ClientsRanking } from "@/components/ClientsRanking";
 import { OperatorsChart } from "@/components/OperatorsChart";
+import { ForecastAdvanced } from "@/components/ForecastAdvanced";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import {
@@ -28,6 +29,7 @@ import {
   useGetDashboardRevenueBreakdown,
   type GetDashboardTimeseriesGranularity,
 } from "@workspace/api-client-react";
+
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
@@ -110,6 +112,7 @@ export default function Dashboard() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="h-8 mb-4 bg-muted/50">
             <TabsTrigger value="apercu" className="text-xs h-7">Aperçu général</TabsTrigger>
+            <TabsTrigger value="previsions" className="text-xs h-7">🔮 Prévisions</TabsTrigger>
             <TabsTrigger value="sites" className="text-xs h-7">Sites & Capacités</TabsTrigger>
             <TabsTrigger value="revenus" className="text-xs h-7">Revenus & Facturation</TabsTrigger>
             <TabsTrigger value="clients" className="text-xs h-7">Clients</TabsTrigger>
@@ -146,6 +149,11 @@ export default function Dashboard() {
               <ForecastChart data={forecastQuery.data} loading={forecastQuery.isLoading || forecastQuery.isFetching} />
               <AiInsightsPanel statsObject={statsForAi} />
             </div>
+          </TabsContent>
+
+          {/* ── TAB: Prévisions intelligentes ── */}
+          <TabsContent value="previsions" className="mt-0">
+            <ForecastAdvanced />
           </TabsContent>
 
           {/* ── TAB: Sites & Capacités ── */}

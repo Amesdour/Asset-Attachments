@@ -154,6 +154,23 @@ paths:
               schema:
                 $ref: "#/components/schemas/ForecastResult"
 
+  /dashboard/forecast-advanced:
+    get:
+      operationId: getDashboardForecastAdvanced
+      tags: [dashboard]
+      summary: Smart multi-year forecasting with Holt-Winters + confidence intervals
+      parameters:
+        - in: query
+          name: years
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Advanced forecast result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdvancedForecastResult"
+
   /dashboard/logs:
     get:
       operationId: getDashboardLogs
@@ -776,3 +793,109 @@ components:
               type: integer
             paidCount:
               type: integer
+
+    AdvancedForecastResult:
+      type: object
+      required: [historicalMonthly, forecastMonthly, annualForecasts, siteProjections, wasteTypeForecast, modelStats, horizonYears]
+      properties:
+        horizonYears:
+          type: integer
+        historicalMonthly:
+          type: array
+          items:
+            type: object
+            required: [month, volume, revenue, count]
+            properties:
+              month: { type: string }
+              volume: { type: number }
+              revenue: { type: number }
+              count: { type: integer }
+        forecastMonthly:
+          type: array
+          items:
+            type: object
+            required: [month, base, lower80, upper80, lower95, upper95, pessimistic, optimistic, revenue]
+            properties:
+              month: { type: string }
+              base: { type: number }
+              lower80: { type: number }
+              upper80: { type: number }
+              lower95: { type: number }
+              upper95: { type: number }
+              pessimistic: { type: number }
+              optimistic: { type: number }
+              revenue: { type: number }
+        annualForecasts:
+          type: array
+          items:
+            type: object
+            required: [year, baseVolume, pessimisticVolume, optimisticVolume, lower95Volume, upper95Volume, baseRevenue, growthVsBase]
+            properties:
+              year: { type: integer }
+              baseVolume: { type: number }
+              pessimisticVolume: { type: number }
+              optimisticVolume: { type: number }
+              lower95Volume: { type: number }
+              upper95Volume: { type: number }
+              baseRevenue: { type: number }
+              growthVsBase: { type: number }
+        siteProjections:
+          type: array
+          items:
+            type: object
+            required: [siteId, siteName, region, usedMt, capacityMt, pctUsed, monthlyRateMt, trendMtPerMonth]
+            properties:
+              siteId: { type: string }
+              siteName: { type: string }
+              region: { type: string }
+              usedMt: { type: number }
+              capacityMt: { type: number }
+              pctUsed: { type: number }
+              monthlyRateMt: { type: number }
+              trendMtPerMonth: { type: number }
+              yearsUntilFull_base: { type: ["number", "null"] }
+              yearsUntilFull_pessimistic: { type: ["number", "null"] }
+              yearsUntilFull_optimistic: { type: ["number", "null"] }
+              exhaustionYear_base: { type: ["integer", "null"] }
+              exhaustionYear_pessimistic: { type: ["integer", "null"] }
+              exhaustionYear_optimistic: { type: ["integer", "null"] }
+        wasteTypeForecast:
+          type: array
+          items:
+            type: object
+            required: [wasteType, label, avgMonthlyMt, annualForecastMt, trendSlope, trendDir, totalHistoricalMt, annualVolumes]
+            properties:
+              wasteType: { type: string }
+              label: { type: string }
+              avgMonthlyMt: { type: number }
+              annualForecastMt: { type: number }
+              trendSlope: { type: number }
+              trendDir: { type: string }
+              totalHistoricalMt: { type: number }
+              annualVolumes:
+                type: array
+                items:
+                  type: object
+                  required: [year, volume]
+                  properties:
+                    year: { type: integer }
+                    volume: { type: number }
+        modelStats:
+          type: object
+          required: [algorithm, monthlyDataPoints, rSquared, mape, trendDirection, trendMtPerMonth, annualGrowthRatePct, currentLevelMt, seasonalPatternDetected, totalCapacityMt, totalUsedMt, globalPctUsed, revenueGrowthRatePct]
+          properties:
+            algorithm: { type: string }
+            monthlyDataPoints: { type: integer }
+            alpha: { type: number }
+            beta: { type: number }
+            rSquared: { type: number }
+            mape: { type: number }
+            trendDirection: { type: string }
+            trendMtPerMonth: { type: number }
+            annualGrowthRatePct: { type: number }
+            currentLevelMt: { type: number }
+            seasonalPatternDetected: { type: boolean }
+            totalCapacityMt: { type: number }
+            totalUsedMt: { type: number }
+            globalPctUsed: { type: number }
+            revenueGrowthRatePct: { type: number }
