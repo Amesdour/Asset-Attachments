@@ -6,8 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface TimeseriesPoint {
-  date: string;
+export type RevenueBreakdownBySiteItem = {
+  siteId: string;
+  siteName: string;
+  revenue: number;
   weightMt: number;
-  revenue?: number;
-}
+  revPerTonne: number;
+  dischargeCount: number;
+};

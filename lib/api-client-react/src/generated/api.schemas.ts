@@ -10,52 +10,49 @@ export interface HealthStatus {
 }
 
 export interface DashboardKpis {
-  /** Total waste collected current month in metric tons */
   totalWasteCurrentMonth: number;
-  /** Total waste collected last month in metric tons */
   totalWasteLastMonth: number;
-  /** Percent change from last month */
   wasteTrend: number;
-  /** Number of active collection operations today */
   activeOperationsToday: number;
-  /** Landfill capacity used as percentage */
   capacityUsedPercent: number;
-  /** Percentage of waste recycled or treated vs buried */
   diversionRate: number;
-  /** Trend in diversion rate vs previous period */
   diversionRateTrend: number;
+  /** Total revenue all time (DZD) */
+  totalRevenue: number;
+  /** Total discharge count */
+  totalDischarges: number;
+  /** Average net weight per discharge in metric tons */
+  avgNetWeightMt: number;
+  /** Average revenue per tonne (DZD/t) */
+  revenuePerTonne: number;
+  /** Total outstanding invoice amount (DZD) */
+  outstandingInvoicesTotal: number;
+  /** Number of overdue invoices */
+  overdueInvoicesCount: number;
 }
 
 export interface TimeseriesPoint {
-  /** ISO date string */
   date: string;
-  /** Waste weight in metric tons */
   weightMt: number;
-  /** @nullable */
-  wasteType?: string | null;
+  revenue?: number;
 }
 
 export interface WasteCategoryBar {
-  /** Waste category (Household, Industrial, Hazardous, Organic) */
   category: string;
-  /** Collected volume in metric tons */
   collected: number;
-  /** Successfully treated volume in metric tons */
   treated: number;
+  revenue?: number;
+  revPerTonne?: number;
 }
 
 export interface TreatmentMethodSlice {
-  /** Treatment method (Landfilled, Incinerated, Recycled, Composted) */
   method: string;
-  /** Volume in metric tons */
   value: number;
-  /** Percentage of total */
   percent: number;
 }
 
 export interface ForecastPoint {
   date: string;
-  /** Cumulative landfill volume in metric tons */
   cumulativeVolume: number;
   isForecast?: boolean;
 }
@@ -79,14 +76,9 @@ export interface RevenuePoint {
 export interface ForecastResult {
   historicalPoints: ForecastPoint[];
   forecastPoints: ForecastPoint[];
-  /** Maximum landfill capacity in metric tons */
   capacityMaxMt: number;
-  /**
-     * Months until capacity is reached, null if not within range
-     * @nullable
-     */
+  /** @nullable */
   warningMonths: number | null;
-  /** Whether capacity will be exceeded within forecast window */
   willExceedCapacity: boolean;
   siteProjections: SiteProjection[];
   revenueHistorical: RevenuePoint[];
@@ -94,7 +86,7 @@ export interface ForecastResult {
 }
 
 export interface WasteLog {
-  id: number;
+  id: string;
   timestamp: string;
   weightMt: number;
   wasteType: string;
@@ -103,6 +95,16 @@ export interface WasteLog {
   site: string;
   treatmentStatus: string;
   treatmentMethod: string;
+  /** @nullable */
+  clientName?: string | null;
+  /** @nullable */
+  payMethod?: string | null;
+  gross?: number;
+  tare?: number;
+  total?: number;
+  /** @nullable */
+  correctionReason?: string | null;
+  unitPrice?: number;
 }
 
 export interface WasteLogsPage {
@@ -112,32 +114,142 @@ export interface WasteLogsPage {
   pageSize: number;
 }
 
+export type AiInsightsRequestFilters = { [key: string]: unknown };
+
 export interface AiInsightsRequest {
-  /** JSON string of recent discharge statistics */
-  statsJson: string;
+  filters?: AiInsightsRequestFilters;
 }
 
-export interface OperationalInsight {
-  /** Category of insight */
+export interface InsightItem {
   category: string;
-  title: string;
-  description: string;
-  /** info | warning | critical */
   severity: string;
-  /** Key metric to display prominently */
+  title: string;
   metric?: string;
-  /** Recommended next action */
-  action?: string;
+  description: string;
+  action: string;
 }
 
 export interface AiInsightsResult {
-  insights: OperationalInsight[];
-  generatedAt: string;
+  insights: InsightItem[];
 }
 
+export type FilterOptionsSitesItem = {
+  id: string;
+  name: string;
+};
+
+export type FilterOptionsWasteTypesItem = {
+  id: string;
+  label: string;
+};
+
 export interface FilterOptions {
-  sites: string[];
-  wasteTypes: string[];
+  sites: FilterOptionsSitesItem[];
+  wasteTypes: FilterOptionsWasteTypesItem[];
+}
+
+export type SiteBreakdownWasteBreakdownItem = {
+  wasteType: string;
+  label: string;
+  weightMt: number;
+  revenue: number;
+};
+
+export interface SiteBreakdown {
+  siteId: string;
+  siteName: string;
+  siteType: string;
+  region: string;
+  capacityMt: number;
+  usedMt: number;
+  pctUsed: number;
+  dischargeCount: number;
+  totalWeightMt: number;
+  totalRevenue: number;
+  revPerTonne: number;
+  acceptedWaste: string[];
+  wasteBreakdown?: SiteBreakdownWasteBreakdownItem[];
+}
+
+export interface ClientRanking {
+  clientId: string;
+  clientName: string;
+  clientType: string;
+  payType: string;
+  totalWeightMt: number;
+  totalRevenue: number;
+  dischargeCount: number;
+  invoiceStatus: string;
+  outstandingBalance: number;
+  creditLimit: number;
+  creditUsed: number;
+  weightLimitYear?: number;
+  weightUsedYear?: number;
+  /** @nullable */
+  lastDischarge?: string | null;
+}
+
+export interface OperatorPerformance {
+  operatorId: string;
+  /** @nullable */
+  operatorName?: string | null;
+  dischargeCount: number;
+  totalWeightMt: number;
+  totalRevenue: number;
+  cancelledCount: number;
+  correctionCount: number;
+  cancelRate: number;
+  avgNetMt: number;
+  /** @nullable */
+  siteName?: string | null;
+}
+
+export type RevenueBreakdownBySiteItem = {
+  siteId: string;
+  siteName: string;
+  revenue: number;
+  weightMt: number;
+  revPerTonne: number;
+  dischargeCount: number;
+};
+
+export type RevenueBreakdownByWasteTypeItem = {
+  wasteType: string;
+  label: string;
+  revenue: number;
+  weightMt: number;
+  revPerTonne: number;
+};
+
+export type RevenueBreakdownByPayMethodItem = {
+  method: string;
+  revenue: number;
+  percent: number;
+  count: number;
+};
+
+export type RevenueBreakdownByClientItem = {
+  clientName: string;
+  revenue: number;
+  weightMt: number;
+  count: number;
+};
+
+export type RevenueBreakdownInvoiceSummary = {
+  totalBilled: number;
+  totalPaid: number;
+  totalOutstanding: number;
+  overdueCount: number;
+  pendingCount: number;
+  paidCount: number;
+};
+
+export interface RevenueBreakdown {
+  bySite: RevenueBreakdownBySiteItem[];
+  byWasteType: RevenueBreakdownByWasteTypeItem[];
+  byPayMethod: RevenueBreakdownByPayMethodItem[];
+  byClient: RevenueBreakdownByClientItem[];
+  invoiceSummary: RevenueBreakdownInvoiceSummary;
 }
 
 export type GetDashboardKpisParams = {
@@ -187,5 +299,28 @@ wasteType?: string;
 site?: string;
 page?: number;
 pageSize?: number;
+};
+
+export type GetDashboardSitesBreakdownParams = {
+dateFrom?: string;
+dateTo?: string;
+};
+
+export type GetDashboardClientsRankingParams = {
+dateFrom?: string;
+dateTo?: string;
+site?: string;
+};
+
+export type GetDashboardOperatorsPerformanceParams = {
+dateFrom?: string;
+dateTo?: string;
+site?: string;
+};
+
+export type GetDashboardRevenueBreakdownParams = {
+dateFrom?: string;
+dateTo?: string;
+site?: string;
 };
 

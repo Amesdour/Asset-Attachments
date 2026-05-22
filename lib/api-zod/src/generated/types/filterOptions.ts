@@ -5,8 +5,10 @@
  * Landfill Discharges & Waste Operations Analytics API
  * OpenAPI spec version: 0.1.0
  */
+import type { FilterOptionsSitesItem } from './filterOptionsSitesItem';
+import type { FilterOptionsWasteTypesItem } from './filterOptionsWasteTypesItem';
 
 export interface FilterOptions {
-  sites: string[];
-  wasteTypes: string[];
+  sites: FilterOptionsSitesItem[];
+  wasteTypes: FilterOptionsWasteTypesItem[];
 }

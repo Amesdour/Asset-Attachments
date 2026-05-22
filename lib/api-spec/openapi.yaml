@@ -218,6 +218,101 @@ paths:
               schema:
                 $ref: "#/components/schemas/FilterOptions"
 
+  /dashboard/sites-breakdown:
+    get:
+      operationId: getDashboardSitesBreakdown
+      tags: [dashboard]
+      summary: Per-site capacity, volume, revenue and waste type breakdown
+      parameters:
+        - in: query
+          name: dateFrom
+          schema: { type: string }
+        - in: query
+          name: dateTo
+          schema: { type: string }
+      responses:
+        "200":
+          description: Sites breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SiteBreakdown"
+
+  /dashboard/clients-ranking:
+    get:
+      operationId: getDashboardClientsRanking
+      tags: [dashboard]
+      summary: Client performance ranking by volume and revenue
+      parameters:
+        - in: query
+          name: dateFrom
+          schema: { type: string }
+        - in: query
+          name: dateTo
+          schema: { type: string }
+        - in: query
+          name: site
+          schema: { type: string }
+      responses:
+        "200":
+          description: Clients ranking
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClientRanking"
+
+  /dashboard/operators-performance:
+    get:
+      operationId: getDashboardOperatorsPerformance
+      tags: [dashboard]
+      summary: Operator-level performance metrics
+      parameters:
+        - in: query
+          name: dateFrom
+          schema: { type: string }
+        - in: query
+          name: dateTo
+          schema: { type: string }
+        - in: query
+          name: site
+          schema: { type: string }
+      responses:
+        "200":
+          description: Operators performance
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OperatorPerformance"
+
+  /dashboard/revenue-breakdown:
+    get:
+      operationId: getDashboardRevenueBreakdown
+      tags: [dashboard]
+      summary: Revenue breakdown by site, waste type, payment method and client
+      parameters:
+        - in: query
+          name: dateFrom
+          schema: { type: string }
+        - in: query
+          name: dateTo
+          schema: { type: string }
+        - in: query
+          name: site
+          schema: { type: string }
+      responses:
+        "200":
+          description: Revenue breakdown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevenueBreakdown"
+
 components:
   schemas:
     HealthStatus:
@@ -238,28 +333,45 @@ components:
         - capacityUsedPercent
         - diversionRate
         - diversionRateTrend
+        - totalRevenue
+        - totalDischarges
+        - avgNetWeightMt
+        - revenuePerTonne
+        - outstandingInvoicesTotal
+        - overdueInvoicesCount
       properties:
         totalWasteCurrentMonth:
           type: number
-          description: Total waste collected current month in metric tons
         totalWasteLastMonth:
           type: number
-          description: Total waste collected last month in metric tons
         wasteTrend:
           type: number
-          description: Percent change from last month
         activeOperationsToday:
           type: integer
-          description: Number of active collection operations today
         capacityUsedPercent:
           type: number
-          description: Landfill capacity used as percentage
         diversionRate:
           type: number
-          description: Percentage of waste recycled or treated vs buried
         diversionRateTrend:
           type: number
-          description: Trend in diversion rate vs previous period
+        totalRevenue:
+          type: number
+          description: Total revenue all time (DZD)
+        totalDischarges:
+          type: integer
+          description: Total discharge count
+        avgNetWeightMt:
+          type: number
+          description: Average net weight per discharge in metric tons
+        revenuePerTonne:
+          type: number
+          description: Average revenue per tonne (DZD/t)
+        outstandingInvoicesTotal:
+          type: number
+          description: Total outstanding invoice amount (DZD)
+        overdueInvoicesCount:
+          type: integer
+          description: Number of overdue invoices
 
     TimeseriesPoint:
       type: object
@@ -267,12 +379,10 @@ components:
       properties:
         date:
           type: string
-          description: ISO date string
         weightMt:
           type: number
-          description: Waste weight in metric tons
-        wasteType:
-          type: ["string", "null"]
+        revenue:
+          type: number
 
     WasteCategoryBar:
       type: object
@@ -280,13 +390,14 @@ components:
       properties:
         category:
           type: string
-          description: Waste category (Household, Industrial, Hazardous, Organic)
         collected:
           type: number
-          description: Collected volume in metric tons
         treated:
           type: number
-          description: Successfully treated volume in metric tons
+        revenue:
+          type: number
+        revPerTonne:
+          type: number
 
     TreatmentMethodSlice:
       type: object
@@ -294,13 +405,10 @@ components:
       properties:
         method:
           type: string
-          description: Treatment method (Landfilled, Incinerated, Recycled, Composted)
         value:
           type: number
-          description: Volume in metric tons
         percent:
           type: number
-          description: Percentage of total
 
     ForecastResult:
       type: object
@@ -316,13 +424,10 @@ components:
             $ref: "#/components/schemas/ForecastPoint"
         capacityMaxMt:
           type: number
-          description: Maximum landfill capacity in metric tons
         warningMonths:
           type: ["integer", "null"]
-          description: Months until capacity is reached, null if not within range
         willExceedCapacity:
           type: boolean
-          description: Whether capacity will be exceeded within forecast window
         siteProjections:
           type: array
           items:
@@ -374,7 +479,6 @@ components:
           type: string
         cumulativeVolume:
           type: number
-          description: Cumulative landfill volume in metric tons
         isForecast:
           type: boolean
 
@@ -398,7 +502,7 @@ components:
       required: [id, timestamp, weightMt, wasteType, wasteCode, truckId, site, treatmentStatus, treatmentMethod]
       properties:
         id:
-          type: integer
+          type: string
         timestamp:
           type: string
         weightMt:
@@ -415,46 +519,52 @@ components:
           type: string
         treatmentMethod:
           type: string
+        clientName:
+          type: ["string", "null"]
+        payMethod:
+          type: ["string", "null"]
+        gross:
+          type: number
+        tare:
+          type: number
+        total:
+          type: number
+        correctionReason:
+          type: ["string", "null"]
+        unitPrice:
+          type: number
 
     AiInsightsRequest:
       type: object
-      required: [statsJson]
       properties:
-        statsJson:
-          type: string
-          description: JSON string of recent discharge statistics
+        filters:
+          type: object
 
     AiInsightsResult:
       type: object
-      required: [insights, generatedAt]
+      required: [insights]
       properties:
         insights:
           type: array
           items:
-            $ref: "#/components/schemas/OperationalInsight"
-        generatedAt:
-          type: string
+            $ref: "#/components/schemas/InsightItem"
 
-    OperationalInsight:
+    InsightItem:
       type: object
-      required: [category, title, description, severity]
+      required: [category, severity, title, description, action]
       properties:
         category:
           type: string
-          description: Category of insight
+        severity:
+          type: string
         title:
+          type: string
+        metric:
           type: string
         description:
           type: string
-        severity:
-          type: string
-          description: "info | warning | critical"
-        metric:
-          type: string
-          description: Key metric to display prominently
         action:
           type: string
-          description: Recommended next action
 
     FilterOptions:
       type: object
@@ -463,8 +573,206 @@ components:
         sites:
           type: array
           items:
-            type: string
+            type: object
+            required: [id, name]
+            properties:
+              id:
+                type: string
+              name:
+                type: string
         wasteTypes:
           type: array
           items:
+            type: object
+            required: [id, label]
+            properties:
+              id:
+                type: string
+              label:
+                type: string
+
+    SiteBreakdown:
+      type: object
+      required: [siteId, siteName, siteType, region, capacityMt, usedMt, pctUsed, dischargeCount, totalWeightMt, totalRevenue, revPerTonne, acceptedWaste]
+      properties:
+        siteId:
+          type: string
+        siteName:
+          type: string
+        siteType:
+          type: string
+        region:
+          type: string
+        capacityMt:
+          type: number
+        usedMt:
+          type: number
+        pctUsed:
+          type: number
+        dischargeCount:
+          type: integer
+        totalWeightMt:
+          type: number
+        totalRevenue:
+          type: number
+        revPerTonne:
+          type: number
+        acceptedWaste:
+          type: array
+          items:
             type: string
+        wasteBreakdown:
+          type: array
+          items:
+            type: object
+            required: [wasteType, label, weightMt, revenue]
+            properties:
+              wasteType:
+                type: string
+              label:
+                type: string
+              weightMt:
+                type: number
+              revenue:
+                type: number
+
+    ClientRanking:
+      type: object
+      required: [clientId, clientName, clientType, payType, totalWeightMt, totalRevenue, dischargeCount, invoiceStatus, outstandingBalance, creditLimit, creditUsed]
+      properties:
+        clientId:
+          type: string
+        clientName:
+          type: string
+        clientType:
+          type: string
+        payType:
+          type: string
+        totalWeightMt:
+          type: number
+        totalRevenue:
+          type: number
+        dischargeCount:
+          type: integer
+        invoiceStatus:
+          type: string
+        outstandingBalance:
+          type: number
+        creditLimit:
+          type: number
+        creditUsed:
+          type: number
+        weightLimitYear:
+          type: number
+        weightUsedYear:
+          type: number
+        lastDischarge:
+          type: ["string", "null"]
+
+    OperatorPerformance:
+      type: object
+      required: [operatorId, dischargeCount, totalWeightMt, totalRevenue, cancelledCount, correctionCount, cancelRate, avgNetMt]
+      properties:
+        operatorId:
+          type: string
+        operatorName:
+          type: ["string", "null"]
+        dischargeCount:
+          type: integer
+        totalWeightMt:
+          type: number
+        totalRevenue:
+          type: number
+        cancelledCount:
+          type: integer
+        correctionCount:
+          type: integer
+        cancelRate:
+          type: number
+        avgNetMt:
+          type: number
+        siteName:
+          type: ["string", "null"]
+
+    RevenueBreakdown:
+      type: object
+      required: [bySite, byWasteType, byPayMethod, byClient, invoiceSummary]
+      properties:
+        bySite:
+          type: array
+          items:
+            type: object
+            required: [siteId, siteName, revenue, weightMt, revPerTonne, dischargeCount]
+            properties:
+              siteId:
+                type: string
+              siteName:
+                type: string
+              revenue:
+                type: number
+              weightMt:
+                type: number
+              revPerTonne:
+                type: number
+              dischargeCount:
+                type: integer
+        byWasteType:
+          type: array
+          items:
+            type: object
+            required: [wasteType, label, revenue, weightMt, revPerTonne]
+            properties:
+              wasteType:
+                type: string
+              label:
+                type: string
+              revenue:
+                type: number
+              weightMt:
+                type: number
+              revPerTonne:
+                type: number
+        byPayMethod:
+          type: array
+          items:
+            type: object
+            required: [method, revenue, percent, count]
+            properties:
+              method:
+                type: string
+              revenue:
+                type: number
+              percent:
+                type: number
+              count:
+                type: integer
+        byClient:
+          type: array
+          items:
+            type: object
+            required: [clientName, revenue, weightMt, count]
+            properties:
+              clientName:
+                type: string
+              revenue:
+                type: number
+              weightMt:
+                type: number
+              count:
+                type: integer
+        invoiceSummary:
+          type: object
+          required: [totalBilled, totalPaid, totalOutstanding, overdueCount, pendingCount, paidCount]
+          properties:
+            totalBilled:
+              type: number
+            totalPaid:
+              type: number
+            totalOutstanding:
+              type: number
+            overdueCount:
+              type: integer
+            pendingCount:
+              type: integer
+            paidCount:
+              type: integer

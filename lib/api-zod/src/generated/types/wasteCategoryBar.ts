@@ -7,10 +7,9 @@
  */
 
 export interface WasteCategoryBar {
-  /** Waste category (Household, Industrial, Hazardous, Organic) */
   category: string;
-  /** Collected volume in metric tons */
   collected: number;
-  /** Successfully treated volume in metric tons */
   treated: number;
+  revenue?: number;
+  revPerTonne?: number;
 }

@@ -1,8 +1,10 @@
 import { Router, Request, Response } from "express";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import analyticsRouter from "./analytics.js";
 
 const router = Router();
+router.use(analyticsRouter);
 
 function parseFilters(query: Request["query"]) {
   const conditions: string[] = [];
@@ -88,7 +90,20 @@ router.get("/kpis", async (req: Request, res: Response): Promise<void> => {
   const totalVol = parseFloat(String(settlementRow.rows[0]?.total ?? 0));
   const settlementRate = totalVol > 0 ? (settledVol / totalVol) * 100 : 0;
 
-  const prevSettlement = 72.4; // baseline for trend comparison
+  const prevSettlement = 72.4;
+
+  // Extra global KPIs
+  const [totalRevenueRow, totalDischargesRow, invoiceRow] = await Promise.all([
+    db.execute(sql`SELECT COALESCE(SUM(total),0) AS rev, COALESCE(SUM(net),0) AS wt FROM discharges WHERE status != 'cancelled'`),
+    db.execute(sql`SELECT COUNT(*) AS cnt FROM discharges WHERE status != 'cancelled'`),
+    db.execute(sql`SELECT COALESCE(SUM(total_amount-paid_amount),0) AS outstanding, COUNT(*) FILTER (WHERE status='overdue') AS overdue FROM invoices`),
+  ]);
+
+  const totalRev = parseFloat(String(totalRevenueRow.rows[0]?.rev ?? 0));
+  const totalWt = parseFloat(String(totalRevenueRow.rows[0]?.wt ?? 0));
+  const totalDischarges = parseInt(String(totalDischargesRow.rows[0]?.cnt ?? 0));
+  const outstanding = parseFloat(String(invoiceRow.rows[0]?.outstanding ?? 0));
+  const overdueCount = parseInt(String(invoiceRow.rows[0]?.overdue ?? 0));
 
   res.json({
     totalWasteCurrentMonth: parseFloat(curMon.toFixed(2)),
@@ -98,6 +113,12 @@ router.get("/kpis", async (req: Request, res: Response): Promise<void> => {
     capacityUsedPercent: parseFloat(capacityUsedPercent.toFixed(4)),
     diversionRate: parseFloat(settlementRate.toFixed(1)),
     diversionRateTrend: parseFloat((settlementRate - prevSettlement).toFixed(1)),
+    totalRevenue: parseFloat(totalRev.toFixed(0)),
+    totalDischarges,
+    avgNetWeightMt: totalDischarges > 0 ? parseFloat((totalWt / totalDischarges).toFixed(2)) : 0,
+    revenuePerTonne: totalWt > 0 ? parseFloat((totalRev / totalWt).toFixed(0)) : 0,
+    outstandingInvoicesTotal: parseFloat(outstanding.toFixed(0)),
+    overdueInvoicesCount: overdueCount,
   });
 });
 
@@ -568,15 +589,10 @@ router.get("/filters/options", async (_req: Request, res: Response): Promise<voi
   ]);
 
   res.json({
-    sites: sitesResult.rows.map((s: Record<string, unknown>) => s.id),
-    siteNames: Object.fromEntries(
-      sitesResult.rows.map((s: Record<string, unknown>) => [s.id, s.name])
-    ),
-    wasteTypes: wasteTypesResult.rows.map((w: Record<string, unknown>) => w.id),
-    wasteTypeLabels: Object.fromEntries(
-      wasteTypesResult.rows.map((w: Record<string, unknown>) => [w.id, w.label])
-    ),
+    sites: sitesResult.rows.map((s: Record<string, unknown>) => ({ id: s.id, name: s.name })),
+    wasteTypes: wasteTypesResult.rows.map((w: Record<string, unknown>) => ({ id: w.id, label: w.label })),
   });
 });
 
+export { router as dashboardRouter };
 export default router;

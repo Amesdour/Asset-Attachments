@@ -7,10 +7,7 @@
  */
 
 export interface TreatmentMethodSlice {
-  /** Treatment method (Landfilled, Incinerated, Recycled, Composted) */
   method: string;
-  /** Volume in metric tons */
   value: number;
-  /** Percentage of total */
   percent: number;
 }

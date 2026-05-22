@@ -7,7 +7,7 @@
  */
 
 export interface WasteLog {
-  id: number;
+  id: string;
   timestamp: string;
   weightMt: number;
   wasteType: string;
@@ -16,4 +16,14 @@ export interface WasteLog {
   site: string;
   treatmentStatus: string;
   treatmentMethod: string;
+  /** @nullable */
+  clientName?: string | null;
+  /** @nullable */
+  payMethod?: string | null;
+  gross?: number;
+  tare?: number;
+  total?: number;
+  /** @nullable */
+  correctionReason?: string | null;
+  unitPrice?: number;
 }

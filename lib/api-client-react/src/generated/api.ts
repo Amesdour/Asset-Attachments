@@ -22,16 +22,24 @@ import type {
 import type {
   AiInsightsRequest,
   AiInsightsResult,
+  ClientRanking,
   DashboardKpis,
   FilterOptions,
   ForecastResult,
+  GetDashboardClientsRankingParams,
   GetDashboardForecastParams,
   GetDashboardKpisParams,
   GetDashboardLogsParams,
+  GetDashboardOperatorsPerformanceParams,
+  GetDashboardRevenueBreakdownParams,
+  GetDashboardSitesBreakdownParams,
   GetDashboardTimeseriesParams,
   GetDashboardTreatmentMethodsParams,
   GetDashboardWasteCategoriesParams,
   HealthStatus,
+  OperatorPerformance,
+  RevenueBreakdown,
+  SiteBreakdown,
   TimeseriesPoint,
   TreatmentMethodSlice,
   WasteCategoryBar,
@@ -768,6 +776,342 @@ export function useGetDashboardFilterOptions<TData = Awaited<ReturnType<typeof g
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDashboardFilterOptionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetDashboardSitesBreakdownUrl = (params?: GetDashboardSitesBreakdownParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/dashboard/sites-breakdown?${stringifiedParams}` : `/api/dashboard/sites-breakdown`
+}
+
+/**
+ * @summary Per-site capacity, volume, revenue and waste type breakdown
+ */
+export const getDashboardSitesBreakdown = async (params?: GetDashboardSitesBreakdownParams, options?: RequestInit): Promise<SiteBreakdown[]> => {
+
+  return customFetch<SiteBreakdown[]>(getGetDashboardSitesBreakdownUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDashboardSitesBreakdownQueryKey = (params?: GetDashboardSitesBreakdownParams,) => {
+    return [
+    `/api/dashboard/sites-breakdown`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDashboardSitesBreakdownQueryOptions = <TData = Awaited<ReturnType<typeof getDashboardSitesBreakdown>>, TError = ErrorType<unknown>>(params?: GetDashboardSitesBreakdownParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardSitesBreakdown>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDashboardSitesBreakdownQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDashboardSitesBreakdown>>> = ({ signal }) => getDashboardSitesBreakdown(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDashboardSitesBreakdown>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDashboardSitesBreakdownQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardSitesBreakdown>>>
+export type GetDashboardSitesBreakdownQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Per-site capacity, volume, revenue and waste type breakdown
+ */
+
+export function useGetDashboardSitesBreakdown<TData = Awaited<ReturnType<typeof getDashboardSitesBreakdown>>, TError = ErrorType<unknown>>(
+ params?: GetDashboardSitesBreakdownParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardSitesBreakdown>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDashboardSitesBreakdownQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetDashboardClientsRankingUrl = (params?: GetDashboardClientsRankingParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/dashboard/clients-ranking?${stringifiedParams}` : `/api/dashboard/clients-ranking`
+}
+
+/**
+ * @summary Client performance ranking by volume and revenue
+ */
+export const getDashboardClientsRanking = async (params?: GetDashboardClientsRankingParams, options?: RequestInit): Promise<ClientRanking[]> => {
+
+  return customFetch<ClientRanking[]>(getGetDashboardClientsRankingUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDashboardClientsRankingQueryKey = (params?: GetDashboardClientsRankingParams,) => {
+    return [
+    `/api/dashboard/clients-ranking`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDashboardClientsRankingQueryOptions = <TData = Awaited<ReturnType<typeof getDashboardClientsRanking>>, TError = ErrorType<unknown>>(params?: GetDashboardClientsRankingParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardClientsRanking>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDashboardClientsRankingQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDashboardClientsRanking>>> = ({ signal }) => getDashboardClientsRanking(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDashboardClientsRanking>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDashboardClientsRankingQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardClientsRanking>>>
+export type GetDashboardClientsRankingQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Client performance ranking by volume and revenue
+ */
+
+export function useGetDashboardClientsRanking<TData = Awaited<ReturnType<typeof getDashboardClientsRanking>>, TError = ErrorType<unknown>>(
+ params?: GetDashboardClientsRankingParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardClientsRanking>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDashboardClientsRankingQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetDashboardOperatorsPerformanceUrl = (params?: GetDashboardOperatorsPerformanceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/dashboard/operators-performance?${stringifiedParams}` : `/api/dashboard/operators-performance`
+}
+
+/**
+ * @summary Operator-level performance metrics
+ */
+export const getDashboardOperatorsPerformance = async (params?: GetDashboardOperatorsPerformanceParams, options?: RequestInit): Promise<OperatorPerformance[]> => {
+
+  return customFetch<OperatorPerformance[]>(getGetDashboardOperatorsPerformanceUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDashboardOperatorsPerformanceQueryKey = (params?: GetDashboardOperatorsPerformanceParams,) => {
+    return [
+    `/api/dashboard/operators-performance`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDashboardOperatorsPerformanceQueryOptions = <TData = Awaited<ReturnType<typeof getDashboardOperatorsPerformance>>, TError = ErrorType<unknown>>(params?: GetDashboardOperatorsPerformanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardOperatorsPerformance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDashboardOperatorsPerformanceQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDashboardOperatorsPerformance>>> = ({ signal }) => getDashboardOperatorsPerformance(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDashboardOperatorsPerformance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDashboardOperatorsPerformanceQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardOperatorsPerformance>>>
+export type GetDashboardOperatorsPerformanceQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Operator-level performance metrics
+ */
+
+export function useGetDashboardOperatorsPerformance<TData = Awaited<ReturnType<typeof getDashboardOperatorsPerformance>>, TError = ErrorType<unknown>>(
+ params?: GetDashboardOperatorsPerformanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardOperatorsPerformance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDashboardOperatorsPerformanceQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetDashboardRevenueBreakdownUrl = (params?: GetDashboardRevenueBreakdownParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/dashboard/revenue-breakdown?${stringifiedParams}` : `/api/dashboard/revenue-breakdown`
+}
+
+/**
+ * @summary Revenue breakdown by site, waste type, payment method and client
+ */
+export const getDashboardRevenueBreakdown = async (params?: GetDashboardRevenueBreakdownParams, options?: RequestInit): Promise<RevenueBreakdown> => {
+
+  return customFetch<RevenueBreakdown>(getGetDashboardRevenueBreakdownUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDashboardRevenueBreakdownQueryKey = (params?: GetDashboardRevenueBreakdownParams,) => {
+    return [
+    `/api/dashboard/revenue-breakdown`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDashboardRevenueBreakdownQueryOptions = <TData = Awaited<ReturnType<typeof getDashboardRevenueBreakdown>>, TError = ErrorType<unknown>>(params?: GetDashboardRevenueBreakdownParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardRevenueBreakdown>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDashboardRevenueBreakdownQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDashboardRevenueBreakdown>>> = ({ signal }) => getDashboardRevenueBreakdown(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDashboardRevenueBreakdown>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDashboardRevenueBreakdownQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardRevenueBreakdown>>>
+export type GetDashboardRevenueBreakdownQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Revenue breakdown by site, waste type, payment method and client
+ */
+
+export function useGetDashboardRevenueBreakdown<TData = Awaited<ReturnType<typeof getDashboardRevenueBreakdown>>, TError = ErrorType<unknown>>(
+ params?: GetDashboardRevenueBreakdownParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardRevenueBreakdown>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDashboardRevenueBreakdownQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -5,8 +5,8 @@
  * Landfill Discharges & Waste Operations Analytics API
  * OpenAPI spec version: 0.1.0
  */
-import type { AiInsightsRequestFilters } from './aiInsightsRequestFilters';
 
-export interface AiInsightsRequest {
-  filters?: AiInsightsRequestFilters;
-}
+export type FilterOptionsWasteTypesItem = {
+  id: string;
+  label: string;
+};

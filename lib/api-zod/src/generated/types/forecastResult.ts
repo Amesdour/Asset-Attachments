@@ -12,14 +12,9 @@ import type { SiteProjection } from './siteProjection';
 export interface ForecastResult {
   historicalPoints: ForecastPoint[];
   forecastPoints: ForecastPoint[];
-  /** Maximum landfill capacity in metric tons */
   capacityMaxMt: number;
-  /**
-     * Months until capacity is reached, null if not within range
-     * @nullable
-     */
+  /** @nullable */
   warningMonths: number | null;
-  /** Whether capacity will be exceeded within forecast window */
   willExceedCapacity: boolean;
   siteProjections: SiteProjection[];
   revenueHistorical: RevenuePoint[];

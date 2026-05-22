@@ -9,6 +9,11 @@ import { TreatmentMethodChart } from "@/components/TreatmentMethodChart";
 import { ForecastChart } from "@/components/ForecastChart";
 import { AiInsightsPanel } from "@/components/AiInsightsPanel";
 import { LogsTable } from "@/components/LogsTable";
+import { SitesBreakdown } from "@/components/SitesBreakdown";
+import { RevenueBreakdown } from "@/components/RevenueBreakdown";
+import { ClientsRanking } from "@/components/ClientsRanking";
+import { OperatorsChart } from "@/components/OperatorsChart";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import {
   useGetDashboardKpis,
@@ -17,40 +22,49 @@ import {
   useGetDashboardTreatmentMethods,
   useGetDashboardForecast,
   useGetDashboardLogs,
-  type GetDashboardTimeseriesGranularity
+  useGetDashboardSitesBreakdown,
+  useGetDashboardClientsRanking,
+  useGetDashboardOperatorsPerformance,
+  useGetDashboardRevenueBreakdown,
+  type GetDashboardTimeseriesGranularity,
 } from "@workspace/api-client-react";
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
-  
-  // Filters
+
   const [filters, setFilters] = useState<DashboardFilters>({});
   const [granularity, setGranularity] = useState<GetDashboardTimeseriesGranularity>("daily");
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const [activeTab, setActiveTab] = useState("apercu");
+  const pageSize = 15;
 
-  // Refresh State
   const [isSpinning, setIsSpinning] = useState(false);
 
-  // Queries
-  const kpisQuery = useGetDashboardKpis(filters);
-  const timeseriesQuery = useGetDashboardTimeseries({ ...filters, granularity });
-  const categoriesQuery = useGetDashboardWasteCategories(filters);
-  const treatmentQuery = useGetDashboardTreatmentMethods(filters);
-  const forecastQuery = useGetDashboardForecast({ months: 12 }); // forecast usually ignores dynamic time filters for historical context, or uses them if desired.
-  const logsQuery = useGetDashboardLogs({ ...filters, page, pageSize });
+  const apiFilters = {
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+    site: filters.site,
+    wasteType: filters.wasteType,
+  };
 
-  // Loading state combination
-  const loading = kpisQuery.isLoading || kpisQuery.isFetching; // For KPIs specifically
-  const chartsLoading = timeseriesQuery.isLoading || timeseriesQuery.isFetching || 
-                        categoriesQuery.isLoading || categoriesQuery.isFetching || 
-                        treatmentQuery.isLoading || treatmentQuery.isFetching;
-  const forecastLoading = forecastQuery.isLoading || forecastQuery.isFetching;
-  const logsLoading = logsQuery.isLoading || logsQuery.isFetching;
-  
-  const anyLoading = loading || chartsLoading || forecastLoading || logsLoading;
+  // Core queries (always fetched)
+  const kpisQuery = useGetDashboardKpis(apiFilters);
+  const timeseriesQuery = useGetDashboardTimeseries({ ...apiFilters, granularity });
+  const categoriesQuery = useGetDashboardWasteCategories(apiFilters);
+  const treatmentQuery = useGetDashboardTreatmentMethods(apiFilters);
+  const forecastQuery = useGetDashboardForecast({ months: 12 });
+  const logsQuery = useGetDashboardLogs({ ...apiFilters, page, pageSize });
 
-  // Handle Refresh
+  // Analytics queries
+  const sitesQuery = useGetDashboardSitesBreakdown(apiFilters);
+  const clientsQuery = useGetDashboardClientsRanking(apiFilters);
+  const operatorsQuery = useGetDashboardOperatorsPerformance(apiFilters);
+  const revenueQuery = useGetDashboardRevenueBreakdown(apiFilters);
+
+  const anyLoading =
+    kpisQuery.isLoading || kpisQuery.isFetching ||
+    timeseriesQuery.isLoading || timeseriesQuery.isFetching;
+
   useEffect(() => {
     if (anyLoading) {
       setIsSpinning(true);
@@ -60,78 +74,124 @@ export default function Dashboard() {
     }
   }, [anyLoading]);
 
-  const handleManualRefresh = () => {
-    queryClient.invalidateQueries();
-  };
+  const handleManualRefresh = () => queryClient.invalidateQueries();
 
-  // Format last refreshed time based on KPI query updated time
   const lastRefreshed = kpisQuery.dataUpdatedAt
     ? (() => {
         const d = new Date(kpisQuery.dataUpdatedAt);
-        return `${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).toLowerCase()} on ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+        return `${d.toLocaleTimeString("fr-DZ", { hour: "2-digit", minute: "2-digit" })} — ${d.toLocaleDateString("fr-DZ", { day: "numeric", month: "short" })}`;
       })()
     : null;
 
-  // Stats object for AI
   const statsForAi = {
     kpis: kpisQuery.data,
-    latestVolumes: timeseriesQuery.data?.slice(-7), // last 7 days/weeks
+    latestVolumes: timeseriesQuery.data?.slice(-7),
     categories: categoriesQuery.data,
   };
 
+  const handleFilterChange = (f: DashboardFilters) => {
+    setFilters(f);
+    setPage(1);
+  };
+
   return (
-    <div className="min-h-screen bg-background px-4 py-6 md:px-8">
-      <div className="max-w-[1600px] mx-auto space-y-6">
-        <DashboardHeader 
-          lastRefreshed={lastRefreshed} 
-          isSpinning={isSpinning} 
-          onRefresh={handleManualRefresh} 
-        />
-        
-        <FilterBar 
-          filters={filters} 
-          onChange={(f) => { setFilters(f); setPage(1); }} 
+    <div className="min-h-screen bg-background px-4 py-5 md:px-8">
+      <div className="max-w-[1600px] mx-auto space-y-5">
+        <DashboardHeader
+          lastRefreshed={lastRefreshed}
+          isSpinning={isSpinning}
+          onRefresh={handleManualRefresh}
         />
 
-        <KpiCards data={kpisQuery.data} loading={loading} />
+        <FilterBar filters={filters} onChange={handleFilterChange} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Main Charts Row */}
-          <div className="lg:col-span-2">
-             <TimeseriesChart 
-               data={timeseriesQuery.data} 
-               loading={timeseriesQuery.isLoading || timeseriesQuery.isFetching} 
-               granularity={granularity}
-               onGranularityChange={setGranularity}
-             />
-          </div>
-          <div className="lg:col-span-1">
-             <WasteCategoryChart 
-               data={categoriesQuery.data} 
-               loading={categoriesQuery.isLoading || categoriesQuery.isFetching} 
-             />
-          </div>
-          <div className="lg:col-span-1">
-             <TreatmentMethodChart 
-               data={treatmentQuery.data} 
-               loading={treatmentQuery.isLoading || treatmentQuery.isFetching} 
-             />
-          </div>
-        </div>
+        <KpiCards data={kpisQuery.data} loading={kpisQuery.isLoading || kpisQuery.isFetching} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ForecastChart data={forecastQuery.data} loading={forecastLoading} />
-          <AiInsightsPanel statsObject={statsForAi} />
-        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="h-8 mb-4 bg-muted/50">
+            <TabsTrigger value="apercu" className="text-xs h-7">Aperçu général</TabsTrigger>
+            <TabsTrigger value="sites" className="text-xs h-7">Sites & Capacités</TabsTrigger>
+            <TabsTrigger value="revenus" className="text-xs h-7">Revenus & Facturation</TabsTrigger>
+            <TabsTrigger value="clients" className="text-xs h-7">Clients</TabsTrigger>
+            <TabsTrigger value="operateurs" className="text-xs h-7">Opérateurs</TabsTrigger>
+            <TabsTrigger value="logs" className="text-xs h-7">Journal</TabsTrigger>
+          </TabsList>
 
-        <LogsTable 
-          logs={logsQuery.data?.logs || []} 
-          total={logsQuery.data?.total || 0}
-          page={page}
-          pageSize={pageSize}
-          loading={logsLoading}
-          onPageChange={setPage}
-        />
+          {/* ── TAB: Aperçu général ── */}
+          <TabsContent value="apercu" className="space-y-5 mt-0">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+              <div className="lg:col-span-2">
+                <TimeseriesChart
+                  data={timeseriesQuery.data}
+                  loading={timeseriesQuery.isLoading || timeseriesQuery.isFetching}
+                  granularity={granularity}
+                  onGranularityChange={setGranularity}
+                />
+              </div>
+              <div className="lg:col-span-1">
+                <WasteCategoryChart
+                  data={categoriesQuery.data}
+                  loading={categoriesQuery.isLoading || categoriesQuery.isFetching}
+                />
+              </div>
+              <div className="lg:col-span-1">
+                <TreatmentMethodChart
+                  data={treatmentQuery.data}
+                  loading={treatmentQuery.isLoading || treatmentQuery.isFetching}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <ForecastChart data={forecastQuery.data} loading={forecastQuery.isLoading || forecastQuery.isFetching} />
+              <AiInsightsPanel statsObject={statsForAi} />
+            </div>
+          </TabsContent>
+
+          {/* ── TAB: Sites & Capacités ── */}
+          <TabsContent value="sites" className="mt-0">
+            <SitesBreakdown
+              data={sitesQuery.data}
+              loading={sitesQuery.isLoading || sitesQuery.isFetching}
+            />
+          </TabsContent>
+
+          {/* ── TAB: Revenus & Facturation ── */}
+          <TabsContent value="revenus" className="mt-0">
+            <RevenueBreakdown
+              data={revenueQuery.data}
+              loading={revenueQuery.isLoading || revenueQuery.isFetching}
+            />
+          </TabsContent>
+
+          {/* ── TAB: Clients ── */}
+          <TabsContent value="clients" className="mt-0">
+            <ClientsRanking
+              data={clientsQuery.data}
+              loading={clientsQuery.isLoading || clientsQuery.isFetching}
+            />
+          </TabsContent>
+
+          {/* ── TAB: Opérateurs ── */}
+          <TabsContent value="operateurs" className="mt-0">
+            <OperatorsChart
+              data={operatorsQuery.data}
+              loading={operatorsQuery.isLoading || operatorsQuery.isFetching}
+            />
+          </TabsContent>
+
+          {/* ── TAB: Journal ── */}
+          <TabsContent value="logs" className="mt-0">
+            <LogsTable
+              logs={logsQuery.data?.logs || []}
+              total={logsQuery.data?.total || 0}
+              page={page}
+              pageSize={pageSize}
+              loading={logsQuery.isLoading || logsQuery.isFetching}
+              onPageChange={setPage}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

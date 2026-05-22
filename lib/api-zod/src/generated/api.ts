@@ -28,13 +28,19 @@ export const GetDashboardKpisQueryParams = zod.object({
 })
 
 export const GetDashboardKpisResponse = zod.object({
-  "totalWasteCurrentMonth": zod.number().describe('Total waste collected current month in metric tons'),
-  "totalWasteLastMonth": zod.number().describe('Total waste collected last month in metric tons'),
-  "wasteTrend": zod.number().describe('Percent change from last month'),
-  "activeOperationsToday": zod.number().describe('Number of active collection operations today'),
-  "capacityUsedPercent": zod.number().describe('Landfill capacity used as percentage'),
-  "diversionRate": zod.number().describe('Percentage of waste recycled or treated vs buried'),
-  "diversionRateTrend": zod.number().describe('Trend in diversion rate vs previous period')
+  "totalWasteCurrentMonth": zod.number(),
+  "totalWasteLastMonth": zod.number(),
+  "wasteTrend": zod.number(),
+  "activeOperationsToday": zod.number(),
+  "capacityUsedPercent": zod.number(),
+  "diversionRate": zod.number(),
+  "diversionRateTrend": zod.number(),
+  "totalRevenue": zod.number().describe('Total revenue all time (DZD)'),
+  "totalDischarges": zod.number().describe('Total discharge count'),
+  "avgNetWeightMt": zod.number().describe('Average net weight per discharge in metric tons'),
+  "revenuePerTonne": zod.number().describe('Average revenue per tonne (DZD\/t)'),
+  "outstandingInvoicesTotal": zod.number().describe('Total outstanding invoice amount (DZD)'),
+  "overdueInvoicesCount": zod.number().describe('Number of overdue invoices')
 })
 
 
@@ -50,9 +56,9 @@ export const GetDashboardTimeseriesQueryParams = zod.object({
 })
 
 export const GetDashboardTimeseriesResponseItem = zod.object({
-  "date": zod.string().describe('ISO date string'),
-  "weightMt": zod.number().describe('Waste weight in metric tons'),
-  "wasteType": zod.string().nullish()
+  "date": zod.string(),
+  "weightMt": zod.number(),
+  "revenue": zod.number().optional()
 })
 export const GetDashboardTimeseriesResponse = zod.array(GetDashboardTimeseriesResponseItem)
 
@@ -67,9 +73,11 @@ export const GetDashboardWasteCategoriesQueryParams = zod.object({
 })
 
 export const GetDashboardWasteCategoriesResponseItem = zod.object({
-  "category": zod.string().describe('Waste category (Household, Industrial, Hazardous, Organic)'),
-  "collected": zod.number().describe('Collected volume in metric tons'),
-  "treated": zod.number().describe('Successfully treated volume in metric tons')
+  "category": zod.string(),
+  "collected": zod.number(),
+  "treated": zod.number(),
+  "revenue": zod.number().optional(),
+  "revPerTonne": zod.number().optional()
 })
 export const GetDashboardWasteCategoriesResponse = zod.array(GetDashboardWasteCategoriesResponseItem)
 
@@ -85,9 +93,9 @@ export const GetDashboardTreatmentMethodsQueryParams = zod.object({
 })
 
 export const GetDashboardTreatmentMethodsResponseItem = zod.object({
-  "method": zod.string().describe('Treatment method (Landfilled, Incinerated, Recycled, Composted)'),
-  "value": zod.number().describe('Volume in metric tons'),
-  "percent": zod.number().describe('Percentage of total')
+  "method": zod.string(),
+  "value": zod.number(),
+  "percent": zod.number()
 })
 export const GetDashboardTreatmentMethodsResponse = zod.array(GetDashboardTreatmentMethodsResponseItem)
 
@@ -102,17 +110,17 @@ export const GetDashboardForecastQueryParams = zod.object({
 export const GetDashboardForecastResponse = zod.object({
   "historicalPoints": zod.array(zod.object({
   "date": zod.string(),
-  "cumulativeVolume": zod.number().describe('Cumulative landfill volume in metric tons'),
+  "cumulativeVolume": zod.number(),
   "isForecast": zod.boolean().optional()
 })),
   "forecastPoints": zod.array(zod.object({
   "date": zod.string(),
-  "cumulativeVolume": zod.number().describe('Cumulative landfill volume in metric tons'),
+  "cumulativeVolume": zod.number(),
   "isForecast": zod.boolean().optional()
 })),
-  "capacityMaxMt": zod.number().describe('Maximum landfill capacity in metric tons'),
-  "warningMonths": zod.number().nullable().describe('Months until capacity is reached, null if not within range'),
-  "willExceedCapacity": zod.boolean().describe('Whether capacity will be exceeded within forecast window'),
+  "capacityMaxMt": zod.number(),
+  "warningMonths": zod.number().nullable(),
+  "willExceedCapacity": zod.boolean(),
   "siteProjections": zod.array(zod.object({
   "siteId": zod.string(),
   "siteName": zod.string(),
@@ -149,7 +157,7 @@ export const GetDashboardLogsQueryParams = zod.object({
 
 export const GetDashboardLogsResponse = zod.object({
   "logs": zod.array(zod.object({
-  "id": zod.number(),
+  "id": zod.string(),
   "timestamp": zod.string(),
   "weightMt": zod.number(),
   "wasteType": zod.string(),
@@ -157,7 +165,14 @@ export const GetDashboardLogsResponse = zod.object({
   "truckId": zod.string(),
   "site": zod.string(),
   "treatmentStatus": zod.string(),
-  "treatmentMethod": zod.string()
+  "treatmentMethod": zod.string(),
+  "clientName": zod.string().nullish(),
+  "payMethod": zod.string().nullish(),
+  "gross": zod.number().optional(),
+  "tare": zod.number().optional(),
+  "total": zod.number().optional(),
+  "correctionReason": zod.string().nullish(),
+  "unitPrice": zod.number().optional()
 })),
   "total": zod.number(),
   "page": zod.number(),
@@ -169,19 +184,20 @@ export const GetDashboardLogsResponse = zod.object({
  * @summary Get AI-powered operational insights
  */
 export const GetAiInsightsBody = zod.object({
-  "statsJson": zod.string().describe('JSON string of recent discharge statistics')
+  "filters": zod.object({
+
+}).passthrough().optional()
 })
 
 export const GetAiInsightsResponse = zod.object({
   "insights": zod.array(zod.object({
-  "category": zod.string().describe('Category of insight'),
+  "category": zod.string(),
+  "severity": zod.string(),
   "title": zod.string(),
+  "metric": zod.string().optional(),
   "description": zod.string(),
-  "severity": zod.string().describe('info | warning | critical'),
-  "metric": zod.string().optional().describe('Key metric to display prominently'),
-  "action": zod.string().optional().describe('Recommended next action')
-})),
-  "generatedAt": zod.string()
+  "action": zod.string()
+}))
 })
 
 
@@ -189,8 +205,145 @@ export const GetAiInsightsResponse = zod.object({
  * @summary Get available filter options (sites, waste types)
  */
 export const GetDashboardFilterOptionsResponse = zod.object({
-  "sites": zod.array(zod.string()),
-  "wasteTypes": zod.array(zod.string())
+  "sites": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string()
+})),
+  "wasteTypes": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string()
+}))
+})
+
+
+/**
+ * @summary Per-site capacity, volume, revenue and waste type breakdown
+ */
+export const GetDashboardSitesBreakdownQueryParams = zod.object({
+  "dateFrom": zod.coerce.string().optional(),
+  "dateTo": zod.coerce.string().optional()
+})
+
+export const GetDashboardSitesBreakdownResponseItem = zod.object({
+  "siteId": zod.string(),
+  "siteName": zod.string(),
+  "siteType": zod.string(),
+  "region": zod.string(),
+  "capacityMt": zod.number(),
+  "usedMt": zod.number(),
+  "pctUsed": zod.number(),
+  "dischargeCount": zod.number(),
+  "totalWeightMt": zod.number(),
+  "totalRevenue": zod.number(),
+  "revPerTonne": zod.number(),
+  "acceptedWaste": zod.array(zod.string()),
+  "wasteBreakdown": zod.array(zod.object({
+  "wasteType": zod.string(),
+  "label": zod.string(),
+  "weightMt": zod.number(),
+  "revenue": zod.number()
+})).optional()
+})
+export const GetDashboardSitesBreakdownResponse = zod.array(GetDashboardSitesBreakdownResponseItem)
+
+
+/**
+ * @summary Client performance ranking by volume and revenue
+ */
+export const GetDashboardClientsRankingQueryParams = zod.object({
+  "dateFrom": zod.coerce.string().optional(),
+  "dateTo": zod.coerce.string().optional(),
+  "site": zod.coerce.string().optional()
+})
+
+export const GetDashboardClientsRankingResponseItem = zod.object({
+  "clientId": zod.string(),
+  "clientName": zod.string(),
+  "clientType": zod.string(),
+  "payType": zod.string(),
+  "totalWeightMt": zod.number(),
+  "totalRevenue": zod.number(),
+  "dischargeCount": zod.number(),
+  "invoiceStatus": zod.string(),
+  "outstandingBalance": zod.number(),
+  "creditLimit": zod.number(),
+  "creditUsed": zod.number(),
+  "weightLimitYear": zod.number().optional(),
+  "weightUsedYear": zod.number().optional(),
+  "lastDischarge": zod.string().nullish()
+})
+export const GetDashboardClientsRankingResponse = zod.array(GetDashboardClientsRankingResponseItem)
+
+
+/**
+ * @summary Operator-level performance metrics
+ */
+export const GetDashboardOperatorsPerformanceQueryParams = zod.object({
+  "dateFrom": zod.coerce.string().optional(),
+  "dateTo": zod.coerce.string().optional(),
+  "site": zod.coerce.string().optional()
+})
+
+export const GetDashboardOperatorsPerformanceResponseItem = zod.object({
+  "operatorId": zod.string(),
+  "operatorName": zod.string().nullish(),
+  "dischargeCount": zod.number(),
+  "totalWeightMt": zod.number(),
+  "totalRevenue": zod.number(),
+  "cancelledCount": zod.number(),
+  "correctionCount": zod.number(),
+  "cancelRate": zod.number(),
+  "avgNetMt": zod.number(),
+  "siteName": zod.string().nullish()
+})
+export const GetDashboardOperatorsPerformanceResponse = zod.array(GetDashboardOperatorsPerformanceResponseItem)
+
+
+/**
+ * @summary Revenue breakdown by site, waste type, payment method and client
+ */
+export const GetDashboardRevenueBreakdownQueryParams = zod.object({
+  "dateFrom": zod.coerce.string().optional(),
+  "dateTo": zod.coerce.string().optional(),
+  "site": zod.coerce.string().optional()
+})
+
+export const GetDashboardRevenueBreakdownResponse = zod.object({
+  "bySite": zod.array(zod.object({
+  "siteId": zod.string(),
+  "siteName": zod.string(),
+  "revenue": zod.number(),
+  "weightMt": zod.number(),
+  "revPerTonne": zod.number(),
+  "dischargeCount": zod.number()
+})),
+  "byWasteType": zod.array(zod.object({
+  "wasteType": zod.string(),
+  "label": zod.string(),
+  "revenue": zod.number(),
+  "weightMt": zod.number(),
+  "revPerTonne": zod.number()
+})),
+  "byPayMethod": zod.array(zod.object({
+  "method": zod.string(),
+  "revenue": zod.number(),
+  "percent": zod.number(),
+  "count": zod.number()
+})),
+  "byClient": zod.array(zod.object({
+  "clientName": zod.string(),
+  "revenue": zod.number(),
+  "weightMt": zod.number(),
+  "count": zod.number()
+})),
+  "invoiceSummary": zod.object({
+  "totalBilled": zod.number(),
+  "totalPaid": zod.number(),
+  "totalOutstanding": zod.number(),
+  "overdueCount": zod.number(),
+  "pendingCount": zod.number(),
+  "paidCount": zod.number()
+})
 })
 
 

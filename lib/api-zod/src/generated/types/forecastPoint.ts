@@ -8,7 +8,6 @@
 
 export interface ForecastPoint {
   date: string;
-  /** Cumulative landfill volume in metric tons */
   cumulativeVolume: number;
   isForecast?: boolean;
 }

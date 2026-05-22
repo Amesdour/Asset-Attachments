@@ -7,18 +7,23 @@
  */
 
 export interface DashboardKpis {
-  /** Total waste collected current month in metric tons */
   totalWasteCurrentMonth: number;
-  /** Total waste collected last month in metric tons */
   totalWasteLastMonth: number;
-  /** Percent change from last month */
   wasteTrend: number;
-  /** Number of active collection operations today */
   activeOperationsToday: number;
-  /** Landfill capacity used as percentage */
   capacityUsedPercent: number;
-  /** Percentage of waste recycled or treated vs buried */
   diversionRate: number;
-  /** Trend in diversion rate vs previous period */
   diversionRateTrend: number;
+  /** Total revenue all time (DZD) */
+  totalRevenue: number;
+  /** Total discharge count */
+  totalDischarges: number;
+  /** Average net weight per discharge in metric tons */
+  avgNetWeightMt: number;
+  /** Average revenue per tonne (DZD/t) */
+  revenuePerTonne: number;
+  /** Total outstanding invoice amount (DZD) */
+  outstandingInvoicesTotal: number;
+  /** Number of overdue invoices */
+  overdueInvoicesCount: number;
 }
