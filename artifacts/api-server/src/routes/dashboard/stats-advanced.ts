@@ -17,7 +17,7 @@ router.get("/stats-advanced", async (_req: Request, res: Response): Promise<void
   // ── Fetch raw data ────────────────────────────────────────────────────────
   const [monthlyRows, siteMonthlyRows, wasteRows, dischRows, dailyCountRows] = await Promise.all([
     db.execute(sql`
-      SELECT to_char(date_trunc('month', ts), 'YYYY-MM-DD') AS month,
+     SELECT to_char(date_trunc('week', ts), 'YYYY-MM-DD') AS month,
         COALESCE(SUM(net),0) AS volume, COALESCE(SUM(total),0) AS revenue,
         COUNT(*) AS cnt, COALESCE(AVG(net),0) AS avg_net
       FROM discharges WHERE status != 'cancelled'
