@@ -71,7 +71,7 @@ router.get("/sites-breakdown", async (req: Request, res: Response): Promise<void
     const siteId = String(s.id);
     const d = dischargeMap[siteId] ?? {};
     const capacityMt = parseFloat(String(s.capacity ?? 0));
-    const usedMt = parseFloat(String(s.used ?? 0));
+    const usedMt = parseFloat(String(d.total_weight ?? 0)) || parseFloat(String(s.used ?? 0));
     const totalWeightMt = parseFloat(String(d.total_weight ?? 0));
     const totalRevenue = parseFloat(String(d.total_revenue ?? 0));
     const dischargeCount = parseInt(String(d.discharge_count ?? 0));
