@@ -90,7 +90,7 @@ router.get("/kpis", async (req: Request, res: Response): Promise<void> => {
     `),
     db.execute(sql`
       SELECT
-        COALESCE(SUM(CASE WHEN status IN ('settled','paid') THEN net ELSE 0 END), 0) AS settled,
+        COALESCE(SUM(CASE WHEN status IN ('paid') THEN net ELSE 0 END), 0) AS settled,
         COALESCE(SUM(net), 0) AS total
       FROM discharges
       ${settlementWhere}
