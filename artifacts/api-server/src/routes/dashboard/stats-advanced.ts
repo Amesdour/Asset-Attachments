@@ -162,3 +162,135 @@ const normalFitVol = volumes.length >= 2 ? fitNormal(volumes) : { mu: 0, sigma: 
 
     const X = monthly.map((m, i) => [m.cnt, m.avgNet, i]);
     const mulReg = monthly.length >= 4 ? multipleLinReg(X, volumes, ["N° décharges", "Moy. net/décharge", "Semaine"]) : { coefficients: [], rSquared: 0, adjRSquared: 0, fStatistic: 0, fPValue: 1 };
+const siteMonthly = siteMonthlyRows.rows as Record<string, unknown>[];
+    const siteMap: Record<string, { name: string; volumes: number[] }> = {};
+    for (const r of siteMonthly) {
+      const sid = String(r.site_id);
+      if (!siteMap[sid]) siteMap[sid] = { name: String(r.site_name ?? sid), volumes: [] };
+      siteMap[sid].volumes.push(parseFloat(String(r.volume ?? 0)));
+    }
+    const siteGroups = Object.values(siteMap).filter(s => s.volumes.length >= 2);
+    const anova = siteGroups.length >= 2
+      ? oneWayAnova(siteGroups.map(s => s.volumes), siteGroups.map(s => s.name))
+      : null;
+
+    const siteList = Object.values(siteMap).filter(s => s.volumes.length >= 2);
+    const tTests: { group1: string; group2: string; tStat: number; df: number; pValue: number; significant: boolean; mean1: number; mean2: number; cohensD: number }[] = [];
+    for (let i = 0; i < siteList.length; i++) {
+      for (let j = i + 1; j < siteList.length; j++) {
+        const res = twoSampleTTest(siteList[i].volumes, siteList[j].volumes);
+        tTests.push({ group1: siteList[i].name, group2: siteList[j].name, tStat: res.tStat, df: res.df, pValue: res.pValue, significant: res.pValue < 0.05, mean1: res.mean1, mean2: res.mean2, cohensD: res.cohensD });
+      }
+    }
+
+    const wasteRows2 = wasteRows.rows as Record<string, unknown>[];
+    const allSites = [...new Set(wasteRows2.map(r => String(r.site_id)))].sort();
+    const allWasteTypes = [...new Set(wasteRows2.map(r => String(r.waste_type)))].sort();
+    const contingency = allWasteTypes.map(wt =>
+      allSites.map(sid => {
+        const found = wasteRows2.find(r => String(r.waste_type) === wt && String(r.site_id) === sid);
+        return found ? parseInt(String(found.cnt ?? 0)) : 0;
+      })
+    );
+    const chiSq = allSites.length >= 2 && allWasteTypes.length >= 2
+      ? chiSquareTest(contingency, allWasteTypes, allSites)
+      : null;
+
+    const pcaData = siteList
+      .map(s => {
+        const sRows = siteMonthly.filter(r => String(r.site_name) === s.name);
+        return [
+          mean(s.volumes),
+          std(s.volumes),
+          s.volumes.length,
+          sRows.reduce((a, r) => a + parseInt(String(r.cnt ?? 0)), 0),
+        ];
+      })
+      .filter(row => row.every(v => isFinite(v)));
+
+    const pcaResult = pcaData.length >= 3
+      ? pca(pcaData, ["Volume moyen", "Vol. σ", "N semaines", "N décharges"], 2)
+      : null;
+
+    const wasteTypePcaData = allWasteTypes.map(wt =>
+      allSites.map(sid => {
+        const found = wasteRows2.find(r => String(r.waste_type) === wt && String(r.site_id) === sid);
+        return found ? parseFloat(String(found.volume ?? 0)) : 0;
+      })
+    );
+    const wastePca = allWasteTypes.length >= 3 && allSites.length >= 2
+      ? pca(wasteTypePcaData, allSites, 2)
+      : null;
+
+    const tsd = monthly.length >= 6
+      ? timeSeriesDecompose(monthly.map(m => ({ month: m.month, value: m.volume })), Math.min(6, monthly.length))
+      : null;
+
+    const ma3 = movingAverage(volumes, 3);
+    const ma6 = movingAverage(volumes, Math.min(6, volumes.length));
+    const movingAverages = monthly.map((m, i) => ({
+      month: m.month, raw: m.volume,
+      ma3: ma3[i] !== null ? parseFloat(ma3[i]!.toFixed(2)) : null,
+      ma6: ma6[i] !== null ? parseFloat(ma6[i]!.toFixed(2)) : null,
+      trend: tsd?.points[i]?.trend ?? null,
+      seasonal: tsd?.points[i]?.seasonal ?? null,
+      residual: tsd?.points[i]?.residual ?? null,
+    }));
+
+    const avgVol = mean(volumes);
+    const volVar = Math.max(std(volumes) ** 2, 1);
+    const bayesianUpdates = bayesianSequentialUpdates(
+      avgVol * 0.8,
+      volVar * 4,
+      volVar,
+      monthly.map(m => ({ month: m.month, value: m.volume }))
+    );
+    res.json({
+      descriptiveStats,
+      distributions: {
+        normalFitVolume: normalFitVol,
+        poissonFitDaily: poissonFitDay,
+        poissonFitMonthly: poissonFitMonth,
+        histogram,
+        poissonHistogram,
+        binomialDist,
+        binomialN,
+        binomialP: parseFloat(pBinom.toFixed(4)),
+      },
+      correlations: {
+        pairs: correlationMatrix,
+        variables: corrNames,
+        matrix2D: corrMatrix2D,
+      },
+      regression: {
+        simple: simpleRegressions,
+        multiple: mulReg,
+      },
+      hypothesisTests: {
+        anova,
+        tTests,
+        chiSquare: chiSq,
+        chiSquareLabels: { rows: allWasteTypes, cols: allSites },
+      },
+      pca: {
+        sitePca: pcaResult ? { ...pcaResult, labels: siteList.map(s => s.name) } : null,
+        wastePca: wastePca ? { ...wastePca, labels: allWasteTypes } : null,
+      },
+      timeSeries: {
+        decomposition: tsd,
+        movingAverages,
+      },
+      bayesian: {
+        prior: { mean: parseFloat((avgVol * 0.8).toFixed(4)), variance: parseFloat((volVar * 4).toFixed(4)) },
+        updates: bayesianUpdates,
+      },
+    });
+
+  } catch (err) {
+    console.error("stats-advanced error:", err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+export default router;
+    
