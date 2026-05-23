@@ -344,20 +344,22 @@ function RevenueChart({ data, horizonYears }: { data: AdvancedForecastResult; ho
 export function ForecastAdvanced() {
   const [horizonYears, setHorizonYears] = useState(10);
   const [scenario, setScenario] = useState<Scenario>("base");
-  const [selectedSite, setSelectedSite] = useState<string>("");
+  const [selectedSite, setSelectedSite] = useState<string>("all");
+
+  const activeSiteId = selectedSite !== "all" ? selectedSite : undefined;
 
   const { data, isLoading, isFetching } = useGetDashboardForecastAdvanced({
     years: horizonYears,
-    ...(selectedSite ? { siteId: selectedSite } : {}),
+    ...(activeSiteId ? { siteId: activeSiteId } : {}),
   });
   const loading = isLoading || isFetching;
 
   const modelStats = data?.modelStats;
   const qualityColor = modelStats ? (modelStats.rSquared > 0.7 ? "text-emerald-600" : modelStats.rSquared > 0.4 ? "text-amber-600" : "text-red-500") : "";
 
-  // Site list always comes from siteProjections (which is always global, unfiltered by siteId)
+  // Site list always comes from siteProjections (always global, never filtered by siteId)
   const siteOptions = data?.siteProjections ?? [];
-  const selectedSiteName = siteOptions.find(s => s.siteId === selectedSite)?.siteName ?? null;
+  const selectedSiteName = activeSiteId ? (siteOptions.find(s => s.siteId === activeSiteId)?.siteName ?? null) : null;
 
   return (
     <div className="space-y-5">
@@ -383,7 +385,7 @@ export function ForecastAdvanced() {
                     <SelectValue placeholder="Tous les sites" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="" className="text-xs">Tous les sites</SelectItem>
+                    <SelectItem value="all" className="text-xs">Tous les sites</SelectItem>
                     {siteOptions.map(s => (
                       <SelectItem key={s.siteId} value={s.siteId} className="text-xs">
                         {s.siteName}
