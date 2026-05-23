@@ -417,8 +417,23 @@ router.post("/ai-insights", async (req: Request, res: Response): Promise<void> =
   const now = new Date();
   const thirtyDaysAgo = new Date(now);
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const ninetyDaysAgo = new Date(now);
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-  const [overdueRow, debtorsRow, cancellationRow, weightLimitRow, siteRevenueRow, operatorCancelRow, wasteRevenueRow] = await Promise.all([
+  const [
+    overdueRow,
+    debtorsRow,
+    totalRevenueRow,
+    cancellationRow,
+    baselineCancellationRow,
+    correctionReasonRow,
+    weightLimitRow,
+    siteRevenueRow,
+    sitesCapacityRow,
+    siteMonthlyRateRow,
+    operatorCancelRow,
+    wasteRevenueRow,
+  ] = await Promise.all([
     // Overdue & unpaid invoices — summary
     db.execute(sql`
       SELECT
@@ -437,7 +452,13 @@ router.post("/ai-insights", async (req: Request, res: Response): Promise<void> =
       ORDER BY (i.total_amount - i.paid_amount) DESC
       LIMIT 3
     `),
-    // Cancellation rate + top cancelled operator
+    // Total revenue (for relative finance threshold)
+    db.execute(sql`
+      SELECT COALESCE(SUM(total), 0) AS total_rev
+      FROM discharges
+      WHERE status != 'cancelled'
+    `),
+    // 30-day cancellation rate + top cancelled operator
     db.execute(sql`
       SELECT
         COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled,
@@ -445,6 +466,25 @@ router.post("/ai-insights", async (req: Request, res: Response): Promise<void> =
         MODE() WITHIN GROUP (ORDER BY CASE WHEN status = 'cancelled' THEN op_id END) AS top_cancel_op
       FROM discharges
       WHERE ts >= ${thirtyDaysAgo}
+    `),
+    // 90-day baseline cancellation rate (for dynamic threshold)
+    db.execute(sql`
+      SELECT
+        COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled,
+        COUNT(*) AS total
+      FROM discharges
+      WHERE ts >= ${ninetyDaysAgo}
+    `),
+    // Most frequent correction_reason in last 30 days
+    db.execute(sql`
+      SELECT correction_reason, COUNT(*) AS cnt
+      FROM discharges
+      WHERE ts >= ${thirtyDaysAgo}
+        AND correction_reason IS NOT NULL
+        AND correction_reason != ''
+      GROUP BY correction_reason
+      ORDER BY cnt DESC
+      LIMIT 1
     `),
     // Clients approaching or over annual weight limit
     db.execute(sql`
@@ -458,7 +498,7 @@ router.post("/ai-insights", async (req: Request, res: Response): Promise<void> =
       ORDER BY (COALESCE(SUM(d.net), 0) / c.weight_limit_year) DESC
       LIMIT 3
     `),
-    // Site performance: revenue per tonne
+    // Site performance: revenue per tonne (ordered by rev_per_t for gap calc)
     db.execute(sql`
       SELECT d.site_id, s.name,
         COALESCE(SUM(d.net), 0) AS total_t,
@@ -468,9 +508,30 @@ router.post("/ai-insights", async (req: Request, res: Response): Promise<void> =
       JOIN sites s ON s.id = d.site_id
       WHERE d.status != 'cancelled'
       GROUP BY d.site_id, s.name
-      ORDER BY total_rev DESC
+      ORDER BY rev_per_t DESC
     `),
-    // Operator with highest cancellation rate
+    // Sites capacity data for dynamic capacity analysis
+    db.execute(sql`
+      SELECT id, name,
+        COALESCE(capacity, 0) AS capacity,
+        COALESCE(used, 0) AS used
+      FROM sites
+      WHERE status = 'active'
+      ORDER BY name
+    `),
+    // Average monthly discharge volume per site (for yearsUntilFull)
+    db.execute(sql`
+      SELECT site_id,
+        COALESCE(SUM(net), 0) /
+          GREATEST(
+            EXTRACT(EPOCH FROM (MAX(ts) - MIN(ts))) / 2592000,
+            1
+          ) AS monthly_rate_t
+      FROM discharges
+      WHERE status != 'cancelled'
+      GROUP BY site_id
+    `),
+    // Operator with highest cancellation rate (30 days)
     db.execute(sql`
       SELECT op_id,
         COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled,
@@ -483,7 +544,7 @@ router.post("/ai-insights", async (req: Request, res: Response): Promise<void> =
       ORDER BY cancel_rate DESC
       LIMIT 1
     `),
-    // Revenue by waste type
+    // Revenue by waste type (ordered by rev_per_t for gap calc)
     db.execute(sql`
       SELECT wt.label, d.waste_type,
         COALESCE(SUM(d.net), 0) AS total_t,
@@ -493,57 +554,123 @@ router.post("/ai-insights", async (req: Request, res: Response): Promise<void> =
       LEFT JOIN waste_types wt ON wt.id = d.waste_type
       WHERE d.status != 'cancelled'
       GROUP BY d.waste_type, wt.label
-      ORDER BY total_rev DESC
+      ORDER BY rev_per_t DESC
     `),
   ]);
 
+  // ── Finance ──────────────────────────────────────────────────────────────────
   const overdue = overdueRow.rows[0] as Record<string, unknown>;
   const debtors = debtorsRow.rows as Record<string, unknown>[];
-  const cancellation = cancellationRow.rows[0] as Record<string, unknown>;
-  const siteRevRows = siteRevenueRow.rows as Record<string, unknown>[];
-  const opCancel = operatorCancelRow.rows[0] as Record<string, unknown> | undefined;
-  const wasteRevRows = wasteRevenueRow.rows as Record<string, unknown>[];
-
   const outstandingAmt = parseFloat(String(overdue?.outstanding ?? 0));
   const overdueCount = parseInt(String(overdue?.overdue_count ?? 0));
   const debtorList = debtors.map((d) => `${String(d.name ?? "Unknown")} (${Number(d.owed ?? 0).toLocaleString("fr-DZ")} DZD)`).join(", ");
+
+  const totalRev = parseFloat(String((totalRevenueRow.rows[0] as Record<string, unknown>)?.total_rev ?? 0));
+  const outstandingPct = totalRev > 0 ? (outstandingAmt / totalRev) * 100 : 0;
+  const financeSeverity = outstandingPct > 10 ? "critical" : outstandingPct > 5 ? "warning" : "info";
+
+  // ── Operations ───────────────────────────────────────────────────────────────
+  const cancellation = cancellationRow.rows[0] as Record<string, unknown>;
+  const baseline = baselineCancellationRow.rows[0] as Record<string, unknown>;
+  const opCancel = operatorCancelRow.rows[0] as Record<string, unknown> | undefined;
+  const topCorrection = correctionReasonRow.rows[0] as Record<string, unknown> | undefined;
 
   const cancelledCount = parseInt(String(cancellation?.cancelled ?? 0));
   const totalCount = parseInt(String(cancellation?.total ?? 1));
   const cancellationRate = totalCount > 0 ? (cancelledCount / totalCount) * 100 : 0;
 
-  const topSite = siteRevRows[0];
-  const bottomSite = siteRevRows[siteRevRows.length - 1];
-  const topWaste = wasteRevRows[0];
+  const baselineCancelled = parseInt(String(baseline?.cancelled ?? 0));
+  const baselineTotal = parseInt(String(baseline?.total ?? 1));
+  const baselineRate = baselineTotal > 0 ? (baselineCancelled / baselineTotal) * 100 : 0;
+  // Dynamic threshold: warn if current 30-day rate exceeds 90-day baseline by 5pp or 50% relative
+  const cancelThresholdExceeded = cancellationRate > baselineRate + 5 || cancellationRate > baselineRate * 1.5;
   const opCancelRate = parseFloat(String(opCancel?.cancel_rate ?? 0));
   const opCancelId = String(opCancel?.op_id ?? "");
+  const topCorrectionReason = topCorrection ? String(topCorrection.correction_reason ?? "") : null;
+  const topCorrectionCount = topCorrection ? parseInt(String(topCorrection.cnt ?? 0)) : 0;
 
+  // ── Compliance ───────────────────────────────────────────────────────────────
   const weightLimitClients = weightLimitRow.rows as Record<string, unknown>[];
 
+  // ── Revenue by site ───────────────────────────────────────────────────────────
+  const siteRevRows = siteRevenueRow.rows as Record<string, unknown>[];
+  // Ordered by rev_per_t DESC — top is best performer
+  const topSiteByRpt = siteRevRows[0];
+  const bottomSiteByRpt = siteRevRows[siteRevRows.length - 1];
+  const topRpt = parseFloat(String(topSiteByRpt?.rev_per_t ?? 0));
+  const bottomRpt = parseFloat(String(bottomSiteByRpt?.rev_per_t ?? 0));
+  const rptGapPct = topRpt > 0 && bottomRpt < topRpt
+    ? parseFloat(((topRpt - bottomRpt) / topRpt * 100).toFixed(0))
+    : 0;
+  // Best revenue site (by total_rev) for metric display
+  const topRevSite = [...siteRevRows].sort((a, b) => parseFloat(String(b.total_rev ?? 0)) - parseFloat(String(a.total_rev ?? 0)))[0];
+
+  // ── Revenue by waste type ─────────────────────────────────────────────────────
+  const wasteRevRows = wasteRevenueRow.rows as Record<string, unknown>[];
+  // Ordered by rev_per_t DESC
+  const topWaste = wasteRevRows[0];
+  const bottomWaste = wasteRevRows[wasteRevRows.length - 1];
+  const wasteRptGap = topWaste && bottomWaste && topWaste.waste_type !== bottomWaste.waste_type
+    ? parseFloat(String(topWaste.rev_per_t ?? 0)) - parseFloat(String(bottomWaste.rev_per_t ?? 0))
+    : 0;
+
+  // ── Capacity ─────────────────────────────────────────────────────────────────
+  const sitesCapacity = sitesCapacityRow.rows as Record<string, unknown>[];
+  const monthlyRateMap: Record<string, number> = {};
+  for (const r of siteMonthlyRateRow.rows as Record<string, unknown>[]) {
+    monthlyRateMap[String(r.site_id)] = parseFloat(String(r.monthly_rate_t ?? 0));
+  }
+
+  const siteCapacityDetails = sitesCapacity.map((s) => {
+    const capacity = parseFloat(String(s.capacity ?? 0));
+    const used = parseFloat(String(s.used ?? 0));
+    const pctUsed = capacity > 0 ? (used / capacity) * 100 : 0;
+    const monthlyRate = monthlyRateMap[String(s.id)] ?? 0;
+    const remaining = capacity - used;
+    const yearsUntilFull = monthlyRate > 0 ? remaining / monthlyRate / 12 : Infinity;
+    return { id: String(s.id), name: String(s.name), capacity, used, pctUsed, yearsUntilFull };
+  });
+
+  const criticalSites = siteCapacityDetails.filter((s) => s.pctUsed >= 80);
+  const warningSites = siteCapacityDetails.filter((s) => s.pctUsed >= 60 && s.pctUsed < 80);
+  const capacitySeverity = criticalSites.length > 0 ? "critical" : warningSites.length > 0 ? "warning" : "info";
+
+  const totalCapacity = siteCapacityDetails.reduce((s, r) => s + r.capacity, 0);
+  const totalUsed = siteCapacityDetails.reduce((s, r) => s + r.used, 0);
+  const overallPct = totalCapacity > 0 ? (totalUsed / totalCapacity) * 100 : 0;
+
   const insights = [
-    // 1. Factures impayées
+    // 1. Factures impayées — severity relative to total revenue
     {
       category: "finance",
-      severity: outstandingAmt > 500000 ? "critical" : outstandingAmt > 100000 ? "warning" : "info",
-      title: outstandingAmt > 0 ? `${outstandingAmt.toLocaleString("fr-DZ")} DZD en attente de règlement` : "Toutes les factures sont réglées",
+      severity: financeSeverity,
+      title: outstandingAmt > 0
+        ? `${outstandingAmt.toLocaleString("fr-DZ")} DZD en attente de règlement (${outstandingPct.toFixed(1)}% du CA)`
+        : "Toutes les factures sont réglées",
       metric: outstandingAmt > 0 ? `${outstandingAmt.toLocaleString("fr-DZ")} DZD` : "0 DZD",
       description: outstandingAmt > 0
-        ? `${overdueCount} facture(s) en retard. Clients avec soldes impayés : ${debtorList || "voir tableau de facturation"}. Escalader les créances les plus importantes à la direction et bloquer les nouveaux dépôts par convention pour les clients en retard de plus de 30 jours jusqu'à réception du paiement.`
+        ? `${overdueCount} facture(s) en retard représentant ${outstandingPct.toFixed(1)}% du chiffre d'affaires total (${totalRev.toLocaleString("fr-DZ")} DZD). Clients avec soldes impayés : ${debtorList || "voir tableau de facturation"}. ${outstandingPct > 10 ? "Seuil critique dépassé — escalader immédiatement à la direction financière." : "Surveiller et relancer les clients concernés."}`
         : "Toutes les factures clients sont réglées. Aucun solde impayé détecté.",
-      action: outstandingAmt > 0 ? "Bloquer les décharges pour les clients en retard & escalader à la direction financière" : "Aucune action requise",
+      action: outstandingAmt > 0
+        ? `Bloquer les décharges pour les clients en retard & escalader à la direction financière (${outstandingPct.toFixed(1)}% du CA impayé)`
+        : "Aucune action requise",
     },
-    // 2. Taux d'annulation
+    // 2. Taux d'annulation — dynamic threshold vs 90-day baseline, with top correction reason
     {
       category: "operations",
-      severity: cancellationRate > 20 ? "warning" : "info",
-      title: cancellationRate > 20 ? `Taux d'annulation ${cancellationRate.toFixed(1)}% — Révision requise` : `Taux d'annulation : ${cancellationRate.toFixed(1)}%`,
-      metric: `${cancellationRate.toFixed(1)}% annulés`,
-      description: cancellationRate > 20
-        ? `${cancelledCount} sur ${totalCount} bons de décharge ont été annulés au cours des 30 derniers jours. ${opCancelId ? `L'opérateur ${opCancelId} a le taux d'annulation le plus élevé à ${opCancelRate}%.` : ""} Auditer les motifs de correction et ajouter des codes de raison obligatoires pour réduire les erreurs de saisie.`
-        : `${cancelledCount} sur ${totalCount} décharges annulées. ${opCancelId && opCancelRate > 30 ? `Surveiller l'opérateur ${opCancelId} (taux : ${opCancelRate}%).` : "La fréquence d'annulation est dans la plage opérationnelle normale."}`,
-      action: cancellationRate > 20 ? `Auditer les saisies des opérateurs — réviser les ${cancelledCount} bons annulés` : "Surveiller mensuellement",
+      severity: cancelThresholdExceeded ? "warning" : "info",
+      title: cancelThresholdExceeded
+        ? `Taux d'annulation ${cancellationRate.toFixed(1)}% — Au-dessus de la moyenne (${baselineRate.toFixed(1)}% sur 90j)`
+        : `Taux d'annulation : ${cancellationRate.toFixed(1)}% (base 90j : ${baselineRate.toFixed(1)}%)`,
+      metric: `${cancellationRate.toFixed(1)}% annulés (30j)`,
+      description: cancelThresholdExceeded
+        ? `${cancelledCount} sur ${totalCount} bons de décharge annulés ces 30 derniers jours — au-dessus de la référence 90j de ${baselineRate.toFixed(1)}%.${topCorrectionReason ? ` Motif de correction le plus fréquent : "${topCorrectionReason}" (${topCorrectionCount} occurrences).` : ""} ${opCancelId ? `L'opérateur ${opCancelId} affiche le taux le plus élevé à ${opCancelRate}%.` : ""} Ajouter des codes de raison obligatoires pour réduire les erreurs de saisie.`
+        : `${cancelledCount} sur ${totalCount} décharges annulées. Taux dans la plage normale (référence 90j : ${baselineRate.toFixed(1)}%).${topCorrectionReason ? ` Motif principal signalé : "${topCorrectionReason}" (${topCorrectionCount} cas).` : ""}${opCancelId && opCancelRate > 30 ? ` Surveiller l'opérateur ${opCancelId} (taux : ${opCancelRate}%).` : ""}`,
+      action: cancelThresholdExceeded
+        ? `Auditer les saisies des opérateurs — réviser les ${cancelledCount} bons annulés${topCorrectionReason ? ` (motif principal : "${topCorrectionReason}")` : ""}`
+        : "Surveiller mensuellement",
     },
-    // 3. Limites de tonnage annuel
+    // 3. Limites de tonnage — proactive recommendation when clear
     {
       category: "compliance",
       severity: weightLimitClients.length > 0 ? "warning" : "info",
@@ -554,40 +681,60 @@ router.post("/ai-insights", async (req: Request, res: Response): Promise<void> =
         ? `${weightLimitClients.map((c) => `${String(c.name).split(" ")[0]}: ${parseFloat(String(c.discharged_t ?? 0)).toFixed(0)}/${parseFloat(String(c.weight_limit_year ?? 0)).toFixed(0)} t`).join(" · ")}`
         : "Aucun dépassement",
       description: weightLimitClients.length > 0
-        ? `Les clients suivants ont consommé ≥70% de leur limite de tonnage annuel : ${weightLimitClients.map((c) => `${c.name} (${parseFloat(String(c.discharged_t ?? 0)).toFixed(0)} t sur ${parseFloat(String(c.weight_limit_year ?? 0)).toFixed(0)} t autorisées)`).join(" ; ")}. Contacter ces clients pour renégocier les termes contractuels ou réduire la fréquence hebdomadaire de décharge avant d'atteindre la limite.`
-        : "Aucun client n'approche ses limites de tonnage annuelles. Planifier les révisions annuelles avant la fin de l'année civile.",
-      action: weightLimitClients.length > 0 ? "Contacter les clients pour renégocier les limites avant dépassement" : "Aucune action requise",
+        ? `Les clients suivants ont consommé ≥70% de leur limite de tonnage annuel : ${weightLimitClients.map((c) => `${c.name} (${parseFloat(String(c.discharged_t ?? 0)).toFixed(0)} t sur ${parseFloat(String(c.weight_limit_year ?? 0)).toFixed(0)} t autorisées, soit ${((parseFloat(String(c.discharged_t ?? 0)) / parseFloat(String(c.weight_limit_year ?? 1))) * 100).toFixed(0)}%)`).join(" ; ")}. Contacter ces clients pour renégocier les termes contractuels ou réduire la fréquence hebdomadaire de décharge avant d'atteindre la limite.`
+        : "Aucun client n'approche ses limites de tonnage annuelles. Recommandation proactive : planifier les révisions contractuelles avant la fin de l'année civile pour ajuster les quotas selon l'évolution des volumes et prévenir tout litige en début d'exercice.",
+      action: weightLimitClients.length > 0
+        ? "Contacter les clients pour renégocier les limites avant dépassement"
+        : "Planifier les révisions de contrats avant fin d'année pour ajuster les quotas tonnage",
     },
-    // 4. Performance financière par site
+    // 4. Performance financière par site — includes rev/tonne gap %
     {
       category: "revenue",
-      severity: "info",
-      title: topSite ? `${String(topSite.name)} — Site le plus rentable` : "Aperçu des revenus par site",
-      metric: topSite ? `${parseFloat(String(topSite.total_rev ?? 0)).toLocaleString("fr-DZ")} DZD · ${parseFloat(String(topSite.rev_per_t ?? 0)).toLocaleString()} DZD/t` : "N/D",
-      description: topSite
-        ? `${String(topSite.name)} a généré ${parseFloat(String(topSite.total_rev ?? 0)).toLocaleString("fr-DZ")} DZD à ${parseFloat(String(topSite.rev_per_t ?? 0)).toLocaleString()} DZD/t.${bottomSite && bottomSite.site_id !== topSite.site_id ? ` ${String(bottomSite.name)} affiche le tarif le plus bas à ${parseFloat(String(bottomSite.rev_per_t ?? 0)).toLocaleString()} DZD/t — envisager une révision tarifaire ou une augmentation de l'allocation clients industriels sur ce site.` : ""}`
+      severity: rptGapPct > 40 ? "warning" : "info",
+      title: topSiteByRpt
+        ? `${String(topSiteByRpt.name)} — Meilleur tarif au tonne (${parseFloat(String(topSiteByRpt.rev_per_t ?? 0)).toLocaleString()} DZD/t)`
+        : "Aperçu des revenus par site",
+      metric: topRevSite ? `${parseFloat(String(topRevSite.total_rev ?? 0)).toLocaleString("fr-DZ")} DZD · ${parseFloat(String(topRevSite.rev_per_t ?? 0)).toLocaleString()} DZD/t` : "N/D",
+      description: topSiteByRpt
+        ? `${String(topSiteByRpt.name)} génère ${parseFloat(String(topSiteByRpt.rev_per_t ?? 0)).toLocaleString()} DZD/t — le meilleur tarif parmi les sites actifs.${bottomSiteByRpt && bottomSiteByRpt.site_id !== topSiteByRpt.site_id ? ` ${String(bottomSiteByRpt.name)} affiche le tarif le plus bas à ${parseFloat(String(bottomSiteByRpt.rev_per_t ?? 0)).toLocaleString()} DZD/t — un écart de ${rptGapPct}% entre le meilleur et le moins performant. ${rptGapPct > 40 ? "Cet écart important justifie une révision tarifaire urgente sur les sites sous-performants." : "Envisager une harmonisation tarifaire ou une redirection des flux industriels vers les sites à fort rendement."}` : ""}`
         : "Données insuffisantes pour la comparaison des revenus par site.",
-      action: "Réviser les grilles tarifaires des sites les moins performants",
+      action: rptGapPct > 0
+        ? `Réviser la grille tarifaire de ${String(bottomSiteByRpt?.name ?? "site sous-performant")} — écart de ${rptGapPct}% vs meilleur site`
+        : "Réviser les grilles tarifaires des sites les moins performants",
     },
-    // 5. Revenus par type de déchet
+    // 5. Revenus par type de déchet — specific waste type recommendation with gap
     {
       category: "revenue",
-      severity: "info",
-      title: topWaste ? `${String(topWaste.label ?? topWaste.waste_type)} — Flux de déchet le plus rentable` : "Analyse des revenus par type de déchet",
+      severity: wasteRptGap > 1000 ? "warning" : "info",
+      title: topWaste
+        ? `${String(topWaste.label ?? topWaste.waste_type)} — Type de déchet le plus rentable`
+        : "Analyse des revenus par type de déchet",
       metric: topWaste ? `${parseFloat(String(topWaste.rev_per_t ?? 0)).toLocaleString()} DZD/t` : "N/D",
       description: wasteRevRows.length > 0
-        ? `Revenus par type de déchet : ${wasteRevRows.map((w) => `${String(w.label ?? w.waste_type)} : ${parseFloat(String(w.rev_per_t ?? 0)).toLocaleString()} DZD/t (${parseFloat(String(w.total_t ?? 0)).toFixed(0)} t)`).join(" · ")}. Prioriser l'attraction de flux à tarif élevé tels que ${String(topWaste?.label ?? "Industriel")} pour maximiser les revenus par décharge.`
+        ? `Tarifs par type de déchet : ${wasteRevRows.map((w) => `${String(w.label ?? w.waste_type)} : ${parseFloat(String(w.rev_per_t ?? 0)).toLocaleString()} DZD/t (${parseFloat(String(w.total_t ?? 0)).toFixed(0)} t)`).join(" · ")}.${wasteRptGap > 0 ? ` Prioriser l'attraction de ${String(topWaste?.label ?? "flux à haute valeur")} : il génère ${wasteRptGap.toLocaleString("fr-DZ")} DZD/t de plus que ${String(bottomWaste?.label ?? "le flux le moins rentable")}. Cibler les industriels et collectivités produisant ce type de déchet pour maximiser le revenu par décharge.` : ""}`
         : "Aucune donnée de revenus par type de déchet disponible.",
-      action: "Cibler les clients industriels/médicaux pour augmenter le revenu moyen par tonne",
+      action: topWaste
+        ? `Cibler l'attraction de "${String(topWaste.label ?? topWaste.waste_type)}" — ${parseFloat(String(topWaste.rev_per_t ?? 0)).toLocaleString()} DZD/t (écart de +${wasteRptGap.toLocaleString()} DZD/t vs type le moins rentable)`
+        : "Cibler les clients industriels pour augmenter le revenu moyen par tonne",
     },
-    // 6. Perspectives de capacité à long terme
+    // 6. Capacité — fully dynamic, no hardcoded conclusions
     {
       category: "capacity",
-      severity: "info",
-      title: "Perspectives de capacité à long terme : Stable",
-      metric: `${siteRevRows.reduce((s, r) => s + parseFloat(String(r.total_t ?? 0)), 0).toFixed(0)} t déchargées`,
-      description: `La capacité totale des sites actifs est de ${siteRevenueRow.rows.reduce((s: number, r: any) => s + parseFloat(String(r.total_t ?? 0)), 0).toLocaleString("fr-DZ")} t déchargées sur ${siteRevenueRow.rows.length} sites. Au rythme mensuel d'admission actuel, tous les sites disposent de plusieurs décennies de capacité résiduelle. La planification capacitaire devrait se concentrer sur les cycles de maintenance des infrastructures, la gestion du lixiviat et les révisions réglementaires environnementales plutôt que sur l'extension.`,
-      action: "Planifier les audits de conformité environnementale annuels par site",
+      severity: capacitySeverity,
+      title: criticalSites.length > 0
+        ? `${criticalSites.length} site(s) à capacité critique (≥80% utilisée)`
+        : warningSites.length > 0
+          ? `${warningSites.length} site(s) approchant la saturation (≥60% utilisée)`
+          : `Capacité globale saine — ${overallPct.toFixed(1)}% utilisée`,
+      metric: `${overallPct.toFixed(1)}% capacité globale utilisée (${totalUsed.toLocaleString("fr-DZ")} / ${totalCapacity.toLocaleString("fr-DZ")} t)`,
+      description: siteCapacityDetails.length > 0
+        ? `État des sites : ${siteCapacityDetails.map((s) => `${s.name} : ${s.pctUsed.toFixed(1)}% utilisée${s.yearsUntilFull !== Infinity ? `, ~${s.yearsUntilFull.toFixed(1)} ans restants` : ", débit insuffisant pour estimer"}`).join(" · ")}.${criticalSites.length > 0 ? ` CRITIQUE : ${criticalSites.map((s) => `${s.name} (${s.pctUsed.toFixed(1)}%)`).join(", ")} nécessite une planification d'extension ou de redirection des flux immédiate.` : warningSites.length > 0 ? ` Surveiller : ${warningSites.map((s) => `${s.name} (${s.pctUsed.toFixed(1)}%)`).join(", ")} — planifier une extension dans les 12 prochains mois.` : " Tous les sites disposent d'une capacité résiduelle confortable. Maintenir les audits infrastructurels annuels et la gestion du lixiviat."}`
+        : "Données de capacité insuffisantes.",
+      action: criticalSites.length > 0
+        ? `Planifier extension ou redirection de flux pour : ${criticalSites.map((s) => `${s.name} (${s.pctUsed.toFixed(1)}%)`).join(", ")}`
+        : warningSites.length > 0
+          ? `Préparer plan d'extension pour : ${warningSites.map((s) => s.name).join(", ")}`
+          : "Planifier les audits de conformité environnementale annuels par site",
     },
   ];
 

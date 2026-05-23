@@ -1,0 +1,30 @@
+Context: I have a landfill operations data analysis tool built with TypeScript, Express backend, React frontend, deployed on Render, connected to a Supabase PostgreSQL database.
+File to edit: artifacts/api-server/src/routes/dashboard/index.ts
+Route to fix: POST /api/dashboard/ai-insights
+Problem: All 6 insights have logic issues — some are hardcoded, some have wrong conclusions, some don't adapt to the actual data situation. Here are the specific problems:
+
+Finance insight — logic is mostly correct but the severity threshold of 500,000 DZD is hardcoded. Make it relative to total revenue (e.g. outstanding > 10% of total revenue = critical)
+Operations insight — cancellation rate threshold of 20% is hardcoded. Also the description doesn't mention what the most common correction reason is. Add a query to get the most frequent correction_reason from discharges.
+Compliance insight — logic is correct but if no clients are approaching limits it just says "no action required" without any proactive recommendation. Add a recommendation to review contracts before year end.
+Revenue insight — site performance comparison is correct but doesn't mention the revenue gap between best and worst performing site. Add the percentage gap between top and bottom site revenue per tonne.
+Waste type insight — correct but doesn't recommend which waste type to prioritize attracting based on revenue per tonne gap. Make the recommendation specific — name the highest revenue waste type and the gap vs lowest.
+Capacity insight — completely hardcoded conclusion "tous les sites disposent de plusieurs décennies". Replace entirely with dynamic analysis:
+
+Add a new query inside Promise.all: SELECT id, name, capacity, used FROM sites WHERE status='active'
+Calculate for each site: pctUsed = used/capacity * 100 and yearsUntilFull = (capacity - used) / monthlyRate / 12 where monthlyRate comes from siteRevenueRow
+Generate dynamic severity: critical if any site >80% used, warning if any site >60%, otherwise info
+Name specific sites that are critical or approaching capacity
+The conclusion must reflect real numbers — never hardcode "decades remaining"
+
+
+
+Database schema:
+
+discharges table: id, ts, site_id, client_id, client_name, waste_type, net, total, status, op_id, correction_reason, truck, pay_method
+sites table: id, name, capacity (numeric), used (numeric), status
+clients table: id, name, client_type, credit_limit, consumed, weight_limit_year
+invoices table: id, client_id, total_amount, paid_amount, status
+waste_types table: id, label
+users table: id, name, site_id
+
+Important: The file uses Drizzle ORM with db.execute(sql\...`)` for all queries. Keep the same pattern. All insights must be truly dynamic — no hardcoded numbers or conclusions. Severity, title, metric, description and action must all reflect the real current state of the data.
