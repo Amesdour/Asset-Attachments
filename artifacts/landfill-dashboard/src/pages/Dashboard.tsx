@@ -113,7 +113,7 @@ export default function Dashboard() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="h-8 mb-4 bg-muted/50">
             <TabsTrigger value="apercu" className="text-xs h-7">Aperçu général</TabsTrigger>
-            <TabsTrigger value="previsions" className="text-xs h-7">🔮 Prévisions</TabsTrigger>
+            <TabsTrigger value="previsions" className="text-xs h-7">📈 Prévisions</TabsTrigger>
             <TabsTrigger value="sites" className="text-xs h-7">Sites & Capacités</TabsTrigger>
             <TabsTrigger value="revenus" className="text-xs h-7">Revenus & Facturation</TabsTrigger>
             <TabsTrigger value="clients" className="text-xs h-7">Clients</TabsTrigger>
