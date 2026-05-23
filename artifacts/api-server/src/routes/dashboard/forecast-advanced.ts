@@ -39,10 +39,26 @@ function mape(actual: number[], predicted: number[]): number {
 }
 
 /**
- * Holt-Winters Double Exponential Smoothing (trend-adjusted, no seasonality)
- * Returns fitted values + h-step ahead forecasts with expanding CI.
+ * Damped-trend Holt-Winters (Double Exponential Smoothing).
+ *
+ * The phi (damping) parameter flattens the trend over long horizons,
+ * preventing runaway extrapolation when the training window is short.
+ * phi = 1.0 → classic linear trend; phi ≈ 0.88 → trend fades to flat.
+ *
+ * The trend is also hard-capped: the implied annual growth rate cannot
+ * exceed ±MAX_ANNUAL_GROWTH, regardless of what the data suggests.
  */
-function holtWinters(data: number[], alpha: number, beta: number, horizon: number, ciZ80 = 1.282, ciZ95 = 1.96) {
+const MAX_ANNUAL_GROWTH = 0.12; // ±12 % per year cap
+
+function holtWinters(
+  data: number[],
+  alpha: number,
+  beta: number,
+  horizon: number,
+  phi = 0.88,
+  ciZ80 = 1.282,
+  ciZ95 = 1.96,
+) {
   if (data.length === 0) return { fitted: [], forecast: [], lower80: [], upper80: [], lower95: [], upper95: [], level: 0, trend: 0 };
 
   if (data.length === 1) {
@@ -50,17 +66,30 @@ function holtWinters(data: number[], alpha: number, beta: number, horizon: numbe
     return { fitted: [data[0]], forecast: f, lower80: f, upper80: f, lower95: f, upper95: f, level: data[0], trend: 0 };
   }
 
-  // Initialise
-  let L = data[0];
-  let T = (data[data.length - 1] - data[0]) / (data.length - 1);
+  // Initialise level at the average of the first few observations,
+  // and trend as the average of first-differences (more robust than
+  // using just the first and last point, especially with short series).
+  const initN = Math.min(4, data.length);
+  let L = data.slice(0, initN).reduce((a, b) => a + b, 0) / initN;
+  const diffs: number[] = [];
+  for (let i = 1; i < data.length; i++) diffs.push(data[i] - data[i - 1]);
+  let T = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+
+  // Cap trend so the implied annual growth never exceeds ±MAX_ANNUAL_GROWTH
+  const maxT = L > 0 ? L * MAX_ANNUAL_GROWTH / 12 : Math.abs(T);
+  T = Math.max(-maxT, Math.min(maxT, T));
+
   const fitted: number[] = [];
 
   for (let t = 1; t < data.length; t++) {
     const prevL = L;
     const prevT = T;
-    fitted.push(Math.max(0, prevL + prevT)); // one-step-ahead
-    L = alpha * data[t] + (1 - alpha) * (prevL + prevT);
-    T = beta * (L - prevL) + (1 - beta) * prevT;
+    fitted.push(Math.max(0, prevL + phi * prevT));
+    L = alpha * data[t] + (1 - alpha) * (prevL + phi * prevT);
+    T = beta * (L - prevL) + (1 - beta) * phi * prevT;
+    // Re-apply cap each step so the update never drifts out of bounds
+    const maxTStep = L > 0 ? L * MAX_ANNUAL_GROWTH / 12 : Math.abs(T);
+    T = Math.max(-maxTStep, Math.min(maxTStep, T));
   }
 
   // Residual σ
@@ -73,9 +102,11 @@ function holtWinters(data: number[], alpha: number, beta: number, horizon: numbe
   const lower95: number[] = [];
   const upper95: number[] = [];
 
+  // Damped cumulative trend: sum_{j=1}^{h} phi^j
+  let phiCum = 0;
   for (let h = 1; h <= horizon; h++) {
-    const f = Math.max(0, L + h * T);
-    // Expanding uncertainty: σ * sqrt(1 + alpha^2 * h) approximation
+    phiCum += Math.pow(phi, h);
+    const f = Math.max(0, L + phiCum * T);
     const spread = σ * Math.sqrt(1 + alpha * alpha * h);
     forecast.push(parseFloat(f.toFixed(2)));
     lower80.push(parseFloat(Math.max(0, f - ciZ80 * spread).toFixed(2)));
