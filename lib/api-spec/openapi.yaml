@@ -154,6 +154,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/ForecastResult"
 
+  /dashboard/stats-advanced:
+    get:
+      operationId: getDashboardStatsAdvanced
+      tags: [dashboard]
+      summary: Full statistical analysis — distributions, correlations, regression, hypothesis tests, PCA, Bayesian
+      responses:
+        "200":
+          description: Advanced statistics result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsAdvancedResult"
+
   /dashboard/forecast-advanced:
     get:
       operationId: getDashboardForecastAdvanced
@@ -899,3 +912,54 @@ components:
             totalUsedMt: { type: number }
             globalPctUsed: { type: number }
             revenueGrowthRatePct: { type: number }
+    StatsAdvancedResult:
+      type: object
+      required: [descriptiveStats, distributions, correlations, regression, hypothesisTests, pca, timeSeries, bayesian]
+      properties:
+        descriptiveStats:
+          type: array
+          items: { type: object }
+        distributions:
+          type: object
+          properties:
+            normalFitVolume: { type: object }
+            poissonFitDaily: { type: object }
+            poissonFitMonthly: { type: object }
+            histogram: { type: array, items: { type: object } }
+            poissonHistogram: { type: array, items: { type: object } }
+            binomialDist: { type: array, items: { type: object } }
+            binomialN: { type: integer }
+            binomialP: { type: number }
+        correlations:
+          type: object
+          properties:
+            pairs: { type: array, items: { type: object } }
+            variables: { type: array, items: { type: string } }
+            matrix2D: { type: array, items: { type: array, items: { type: number } } }
+        regression:
+          type: object
+          properties:
+            simple: { type: array, items: { type: object } }
+            multiple: { type: object }
+        hypothesisTests:
+          type: object
+          properties:
+            anova: { type: object, nullable: true }
+            tTests: { type: array, items: { type: object } }
+            chiSquare: { type: object, nullable: true }
+            chiSquareLabels: { type: object }
+        pca:
+          type: object
+          properties:
+            sitePca: { type: object, nullable: true }
+            wastePca: { type: object, nullable: true }
+        timeSeries:
+          type: object
+          properties:
+            decomposition: { type: object, nullable: true }
+            movingAverages: { type: array, items: { type: object } }
+        bayesian:
+          type: object
+          properties:
+            prior: { type: object }
+            updates: { type: array, items: { type: object } }

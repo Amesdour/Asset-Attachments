@@ -144,6 +144,91 @@ export const GetDashboardForecastResponse = zod.object({
 
 
 /**
+ * @summary Full statistical analysis — distributions, correlations, regression, hypothesis tests, PCA, Bayesian
+ */
+export const GetDashboardStatsAdvancedResponse = zod.object({
+  "descriptiveStats": zod.array(zod.object({
+
+}).passthrough()),
+  "distributions": zod.object({
+  "normalFitVolume": zod.object({
+
+}).passthrough().optional(),
+  "poissonFitDaily": zod.object({
+
+}).passthrough().optional(),
+  "poissonFitMonthly": zod.object({
+
+}).passthrough().optional(),
+  "histogram": zod.array(zod.object({
+
+}).passthrough()).optional(),
+  "poissonHistogram": zod.array(zod.object({
+
+}).passthrough()).optional(),
+  "binomialDist": zod.array(zod.object({
+
+}).passthrough()).optional(),
+  "binomialN": zod.number().optional(),
+  "binomialP": zod.number().optional()
+}),
+  "correlations": zod.object({
+  "pairs": zod.array(zod.object({
+
+}).passthrough()).optional(),
+  "variables": zod.array(zod.string()).optional(),
+  "matrix2D": zod.array(zod.array(zod.number())).optional()
+}),
+  "regression": zod.object({
+  "simple": zod.array(zod.object({
+
+}).passthrough()).optional(),
+  "multiple": zod.object({
+
+}).passthrough().optional()
+}),
+  "hypothesisTests": zod.object({
+  "anova": zod.object({
+
+}).passthrough().nullish(),
+  "tTests": zod.array(zod.object({
+
+}).passthrough()).optional(),
+  "chiSquare": zod.object({
+
+}).passthrough().nullish(),
+  "chiSquareLabels": zod.object({
+
+}).passthrough().optional()
+}),
+  "pca": zod.object({
+  "sitePca": zod.object({
+
+}).passthrough().nullish(),
+  "wastePca": zod.object({
+
+}).passthrough().nullish()
+}),
+  "timeSeries": zod.object({
+  "decomposition": zod.object({
+
+}).passthrough().nullish(),
+  "movingAverages": zod.array(zod.object({
+
+}).passthrough()).optional()
+}),
+  "bayesian": zod.object({
+  "prior": zod.object({
+
+}).passthrough().optional(),
+  "updates": zod.array(zod.object({
+
+}).passthrough()).optional()
+})
+})
+
+
+/**
  * @summary Smart multi-year forecasting with Holt-Winters + confidence intervals
  */
 export const GetDashboardForecastAdvancedQueryParams = zod.object({

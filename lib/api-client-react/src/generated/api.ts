@@ -42,6 +42,7 @@ import type {
   OperatorPerformance,
   RevenueBreakdown,
   SiteBreakdown,
+  StatsAdvancedResult,
   TimeseriesPoint,
   TreatmentMethodSlice,
   WasteCategoryBar,
@@ -546,6 +547,83 @@ export function useGetDashboardForecast<TData = Awaited<ReturnType<typeof getDas
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDashboardForecastQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetDashboardStatsAdvancedUrl = () => {
+
+
+
+
+  return `/api/dashboard/stats-advanced`
+}
+
+/**
+ * @summary Full statistical analysis — distributions, correlations, regression, hypothesis tests, PCA, Bayesian
+ */
+export const getDashboardStatsAdvanced = async ( options?: RequestInit): Promise<StatsAdvancedResult> => {
+
+  return customFetch<StatsAdvancedResult>(getGetDashboardStatsAdvancedUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDashboardStatsAdvancedQueryKey = () => {
+    return [
+    `/api/dashboard/stats-advanced`
+    ] as const;
+    }
+
+
+export const getGetDashboardStatsAdvancedQueryOptions = <TData = Awaited<ReturnType<typeof getDashboardStatsAdvanced>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardStatsAdvanced>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDashboardStatsAdvancedQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDashboardStatsAdvanced>>> = ({ signal }) => getDashboardStatsAdvanced({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDashboardStatsAdvanced>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDashboardStatsAdvancedQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardStatsAdvanced>>>
+export type GetDashboardStatsAdvancedQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Full statistical analysis — distributions, correlations, regression, hypothesis tests, PCA, Bayesian
+ */
+
+export function useGetDashboardStatsAdvanced<TData = Awaited<ReturnType<typeof getDashboardStatsAdvanced>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardStatsAdvanced>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDashboardStatsAdvancedQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

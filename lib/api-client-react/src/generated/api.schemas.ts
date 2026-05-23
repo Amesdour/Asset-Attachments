@@ -349,6 +349,101 @@ export interface AdvancedForecastResult {
   modelStats: AdvancedForecastResultModelStats;
 }
 
+export type StatsAdvancedResultDescriptiveStatsItem = { [key: string]: unknown };
+
+export type StatsAdvancedResultDistributionsNormalFitVolume = { [key: string]: unknown };
+
+export type StatsAdvancedResultDistributionsPoissonFitDaily = { [key: string]: unknown };
+
+export type StatsAdvancedResultDistributionsPoissonFitMonthly = { [key: string]: unknown };
+
+export type StatsAdvancedResultDistributionsHistogramItem = { [key: string]: unknown };
+
+export type StatsAdvancedResultDistributionsPoissonHistogramItem = { [key: string]: unknown };
+
+export type StatsAdvancedResultDistributionsBinomialDistItem = { [key: string]: unknown };
+
+export type StatsAdvancedResultDistributions = {
+  normalFitVolume?: StatsAdvancedResultDistributionsNormalFitVolume;
+  poissonFitDaily?: StatsAdvancedResultDistributionsPoissonFitDaily;
+  poissonFitMonthly?: StatsAdvancedResultDistributionsPoissonFitMonthly;
+  histogram?: StatsAdvancedResultDistributionsHistogramItem[];
+  poissonHistogram?: StatsAdvancedResultDistributionsPoissonHistogramItem[];
+  binomialDist?: StatsAdvancedResultDistributionsBinomialDistItem[];
+  binomialN?: number;
+  binomialP?: number;
+};
+
+export type StatsAdvancedResultCorrelationsPairsItem = { [key: string]: unknown };
+
+export type StatsAdvancedResultCorrelations = {
+  pairs?: StatsAdvancedResultCorrelationsPairsItem[];
+  variables?: string[];
+  matrix2D?: number[][];
+};
+
+export type StatsAdvancedResultRegressionSimpleItem = { [key: string]: unknown };
+
+export type StatsAdvancedResultRegressionMultiple = { [key: string]: unknown };
+
+export type StatsAdvancedResultRegression = {
+  simple?: StatsAdvancedResultRegressionSimpleItem[];
+  multiple?: StatsAdvancedResultRegressionMultiple;
+};
+
+export type StatsAdvancedResultHypothesisTestsAnova = { [key: string]: unknown } | null;
+
+export type StatsAdvancedResultHypothesisTestsTTestsItem = { [key: string]: unknown };
+
+export type StatsAdvancedResultHypothesisTestsChiSquare = { [key: string]: unknown } | null;
+
+export type StatsAdvancedResultHypothesisTestsChiSquareLabels = { [key: string]: unknown };
+
+export type StatsAdvancedResultHypothesisTests = {
+  anova?: StatsAdvancedResultHypothesisTestsAnova;
+  tTests?: StatsAdvancedResultHypothesisTestsTTestsItem[];
+  chiSquare?: StatsAdvancedResultHypothesisTestsChiSquare;
+  chiSquareLabels?: StatsAdvancedResultHypothesisTestsChiSquareLabels;
+};
+
+export type StatsAdvancedResultPcaSitePca = { [key: string]: unknown } | null;
+
+export type StatsAdvancedResultPcaWastePca = { [key: string]: unknown } | null;
+
+export type StatsAdvancedResultPca = {
+  sitePca?: StatsAdvancedResultPcaSitePca;
+  wastePca?: StatsAdvancedResultPcaWastePca;
+};
+
+export type StatsAdvancedResultTimeSeriesDecomposition = { [key: string]: unknown } | null;
+
+export type StatsAdvancedResultTimeSeriesMovingAveragesItem = { [key: string]: unknown };
+
+export type StatsAdvancedResultTimeSeries = {
+  decomposition?: StatsAdvancedResultTimeSeriesDecomposition;
+  movingAverages?: StatsAdvancedResultTimeSeriesMovingAveragesItem[];
+};
+
+export type StatsAdvancedResultBayesianPrior = { [key: string]: unknown };
+
+export type StatsAdvancedResultBayesianUpdatesItem = { [key: string]: unknown };
+
+export type StatsAdvancedResultBayesian = {
+  prior?: StatsAdvancedResultBayesianPrior;
+  updates?: StatsAdvancedResultBayesianUpdatesItem[];
+};
+
+export interface StatsAdvancedResult {
+  descriptiveStats: StatsAdvancedResultDescriptiveStatsItem[];
+  distributions: StatsAdvancedResultDistributions;
+  correlations: StatsAdvancedResultCorrelations;
+  regression: StatsAdvancedResultRegression;
+  hypothesisTests: StatsAdvancedResultHypothesisTests;
+  pca: StatsAdvancedResultPca;
+  timeSeries: StatsAdvancedResultTimeSeries;
+  bayesian: StatsAdvancedResultBayesian;
+}
+
 export type GetDashboardKpisParams = {
 dateFrom?: string;
 dateTo?: string;

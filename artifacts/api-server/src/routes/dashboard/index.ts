@@ -3,10 +3,12 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import analyticsRouter from "./analytics.js";
 import forecastAdvancedRouter from "./forecast-advanced.js";
+import statsAdvancedRouter from "./stats-advanced.js";
 
 const router = Router();
 router.use(analyticsRouter);
 router.use(forecastAdvancedRouter);
+router.use(statsAdvancedRouter);
 
 function parseFilters(query: Request["query"]) {
   const conditions: string[] = [];

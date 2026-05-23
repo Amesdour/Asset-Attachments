@@ -14,6 +14,7 @@ import { RevenueBreakdown } from "@/components/RevenueBreakdown";
 import { ClientsRanking } from "@/components/ClientsRanking";
 import { OperatorsChart } from "@/components/OperatorsChart";
 import { ForecastAdvanced } from "@/components/ForecastAdvanced";
+import { StatsPanel } from "@/components/StatsPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import {
@@ -117,6 +118,7 @@ export default function Dashboard() {
             <TabsTrigger value="revenus" className="text-xs h-7">Revenus & Facturation</TabsTrigger>
             <TabsTrigger value="clients" className="text-xs h-7">Clients</TabsTrigger>
             <TabsTrigger value="operateurs" className="text-xs h-7">Opérateurs</TabsTrigger>
+            <TabsTrigger value="statistiques" className="text-xs h-7">🧮 Statistiques</TabsTrigger>
             <TabsTrigger value="logs" className="text-xs h-7">Journal</TabsTrigger>
           </TabsList>
 
@@ -154,6 +156,11 @@ export default function Dashboard() {
           {/* ── TAB: Prévisions intelligentes ── */}
           <TabsContent value="previsions" className="mt-0">
             <ForecastAdvanced />
+          </TabsContent>
+
+          {/* ── TAB: Statistiques ── */}
+          <TabsContent value="statistiques" className="mt-0">
+            <StatsPanel />
           </TabsContent>
 
           {/* ── TAB: Sites & Capacités ── */}
