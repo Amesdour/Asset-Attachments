@@ -586,7 +586,7 @@ router.post("/ai-insights", async (req: Request, res: Response): Promise<void> =
       severity: "info",
       title: "Perspectives de capacité à long terme : Stable",
       metric: `${siteRevRows.reduce((s, r) => s + parseFloat(String(r.total_t ?? 0)), 0).toFixed(0)} t déchargées`,
-      description: `La capacité totale des sites actifs est de ${(180000000).toLocaleString("fr-DZ")} t répartis sur 4 sites. Au rythme mensuel d'admission actuel, tous les sites disposent de plusieurs décennies de capacité résiduelle. La planification capacitaire devrait se concentrer sur les cycles de maintenance des infrastructures, la gestion du lixiviat et les révisions réglementaires environnementales plutôt que sur l'extension.`,
+      description: `La capacité totale des sites actifs est de ${siteRevenueRow.rows.reduce((s: number, r: any) => s + parseFloat(String(r.total_t ?? 0)), 0).toLocaleString("fr-DZ")} t déchargées sur ${siteRevenueRow.rows.length} sites. Au rythme mensuel d'admission actuel, tous les sites disposent de plusieurs décennies de capacité résiduelle. La planification capacitaire devrait se concentrer sur les cycles de maintenance des infrastructures, la gestion du lixiviat et les révisions réglementaires environnementales plutôt que sur l'extension.`,
       action: "Planifier les audits de conformité environnementale annuels par site",
     },
   ];
