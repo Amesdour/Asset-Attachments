@@ -9,5 +9,6 @@
 export type GetDashboardWasteCategoriesParams = {
 dateFrom?: string;
 dateTo?: string;
+wasteType?: string;
 site?: string;
 };

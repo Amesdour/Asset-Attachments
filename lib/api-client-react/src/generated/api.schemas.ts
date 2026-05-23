@@ -470,6 +470,7 @@ export const GetDashboardTimeseriesGranularity = {
 export type GetDashboardWasteCategoriesParams = {
 dateFrom?: string;
 dateTo?: string;
+wasteType?: string;
 site?: string;
 };
 
@@ -500,6 +501,8 @@ pageSize?: number;
 export type GetDashboardSitesBreakdownParams = {
 dateFrom?: string;
 dateTo?: string;
+site?: string;
+wasteType?: string;
 };
 
 export type GetDashboardClientsRankingParams = {

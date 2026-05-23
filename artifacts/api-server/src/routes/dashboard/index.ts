@@ -30,6 +30,27 @@ function parseFilters(query: Request["query"]): SQL[] {
   return conds;
 }
 
+/** Same as parseFilters but without the `d.` table alias — for queries that reference `discharges` directly */
+function parseFiltersNoAlias(query: Request["query"]): SQL[] {
+  const { dateFrom, dateTo, wasteType, site } = query;
+  const conds: SQL[] = [];
+  if (dateFrom && typeof dateFrom === "string") {
+    conds.push(sql`ts >= ${new Date(dateFrom)}`);
+  }
+  if (dateTo && typeof dateTo === "string") {
+    const end = new Date(dateTo);
+    end.setHours(23, 59, 59, 999);
+    conds.push(sql`ts <= ${end}`);
+  }
+  if (wasteType && typeof wasteType === "string" && wasteType.toLowerCase() !== "all") {
+    conds.push(sql`waste_type = ${wasteType}`);
+  }
+  if (site && typeof site === "string" && site.toLowerCase() !== "all") {
+    conds.push(sql`site_id = ${site}`);
+  }
+  return conds;
+}
+
 function buildSqlWhere(userConds: SQL[], base: SQL = sql`d.status != 'cancelled'`): SQL {
   const all: SQL[] = [base, ...userConds];
   return sql`WHERE ${sql.join(all, sql` AND `)}`;
@@ -43,22 +64,25 @@ router.get("/kpis", async (req: Request, res: Response): Promise<void> => {
   const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
+  // Build user filter conditions using no-alias version (queries reference discharges directly)
+  const userConds = parseFiltersNoAlias(req.query);
+  const hasFilters = userConds.length > 0;
+
+  const buildKpiWhere = (periodConds: SQL[]): SQL => {
+    const all: SQL[] = [sql`status != 'cancelled'`, ...periodConds, ...userConds];
+    return sql`WHERE ${sql.join(all, sql` AND `)}`;
+  };
+
+  const curMonthWhere = buildKpiWhere([sql`ts >= ${curMonthStart}`]);
+  const prevMonthWhere = buildKpiWhere([sql`ts >= ${prevMonthStart}`, sql`ts <= ${prevMonthEnd}`]);
+  const todayWhere = buildKpiWhere([sql`ts >= ${todayStart}`]);
+  const settlementWhere = buildKpiWhere([sql`ts >= ${curMonthStart}`]);
+  const allTimeWhere = hasFilters ? buildKpiWhere([]) : sql`WHERE status != 'cancelled'`;
+
   const [curMonth, prevMonth, todayOps, capacityRow, settlementRow] = await Promise.all([
-    db.execute(sql`
-      SELECT COALESCE(SUM(net), 0) AS total
-      FROM discharges
-      WHERE status != 'cancelled' AND ts >= ${curMonthStart}
-    `),
-    db.execute(sql`
-      SELECT COALESCE(SUM(net), 0) AS total
-      FROM discharges
-      WHERE status != 'cancelled' AND ts >= ${prevMonthStart} AND ts <= ${prevMonthEnd}
-    `),
-    db.execute(sql`
-      SELECT COUNT(DISTINCT truck) AS cnt
-      FROM discharges
-      WHERE ts >= ${todayStart}
-    `),
+    db.execute(sql`SELECT COALESCE(SUM(net), 0) AS total FROM discharges ${curMonthWhere}`),
+    db.execute(sql`SELECT COALESCE(SUM(net), 0) AS total FROM discharges ${prevMonthWhere}`),
+    db.execute(sql`SELECT COUNT(DISTINCT truck) AS cnt FROM discharges ${todayWhere}`),
     db.execute(sql`
       SELECT COALESCE(SUM(used), 0) AS used, COALESCE(SUM(capacity), 0) AS capacity
       FROM sites
@@ -69,7 +93,7 @@ router.get("/kpis", async (req: Request, res: Response): Promise<void> => {
         COALESCE(SUM(CASE WHEN status IN ('settled','paid') THEN net ELSE 0 END), 0) AS settled,
         COALESCE(SUM(net), 0) AS total
       FROM discharges
-      WHERE status != 'cancelled' AND ts >= ${curMonthStart}
+      ${settlementWhere}
     `),
   ]);
 
@@ -87,10 +111,10 @@ router.get("/kpis", async (req: Request, res: Response): Promise<void> => {
 
   const prevSettlement = 72.4;
 
-  // Extra global KPIs
+  // Filtered global KPIs
   const [totalRevenueRow, totalDischargesRow, invoiceRow] = await Promise.all([
-    db.execute(sql`SELECT COALESCE(SUM(total),0) AS rev, COALESCE(SUM(net),0) AS wt FROM discharges WHERE status != 'cancelled'`),
-    db.execute(sql`SELECT COUNT(*) AS cnt FROM discharges WHERE status != 'cancelled'`),
+    db.execute(sql`SELECT COALESCE(SUM(total),0) AS rev, COALESCE(SUM(net),0) AS wt FROM discharges ${allTimeWhere}`),
+    db.execute(sql`SELECT COUNT(*) AS cnt FROM discharges ${allTimeWhere}`),
     db.execute(sql`SELECT COALESCE(SUM(total_amount-paid_amount),0) AS outstanding, COUNT(*) FILTER (WHERE status='overdue') AS overdue FROM invoices`),
   ]);
 

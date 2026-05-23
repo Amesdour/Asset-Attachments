@@ -69,6 +69,7 @@ export const GetDashboardTimeseriesResponse = zod.array(GetDashboardTimeseriesRe
 export const GetDashboardWasteCategoriesQueryParams = zod.object({
   "dateFrom": zod.coerce.string().optional(),
   "dateTo": zod.coerce.string().optional(),
+  "wasteType": zod.coerce.string().optional(),
   "site": zod.coerce.string().optional()
 })
 
@@ -391,7 +392,9 @@ export const GetDashboardFilterOptionsResponse = zod.object({
  */
 export const GetDashboardSitesBreakdownQueryParams = zod.object({
   "dateFrom": zod.coerce.string().optional(),
-  "dateTo": zod.coerce.string().optional()
+  "dateTo": zod.coerce.string().optional(),
+  "site": zod.coerce.string().optional(),
+  "wasteType": zod.coerce.string().optional()
 })
 
 export const GetDashboardSitesBreakdownResponseItem = zod.object({

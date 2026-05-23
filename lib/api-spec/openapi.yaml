@@ -97,6 +97,9 @@ paths:
           name: dateTo
           schema: { type: string }
         - in: query
+          name: wasteType
+          schema: { type: string }
+        - in: query
           name: site
           schema: { type: string }
       responses:
@@ -259,6 +262,12 @@ paths:
           schema: { type: string }
         - in: query
           name: dateTo
+          schema: { type: string }
+        - in: query
+          name: site
+          schema: { type: string }
+        - in: query
+          name: wasteType
           schema: { type: string }
       responses:
         "200":

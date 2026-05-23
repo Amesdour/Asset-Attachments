@@ -9,4 +9,6 @@
 export type GetDashboardSitesBreakdownParams = {
 dateFrom?: string;
 dateTo?: string;
+site?: string;
+wasteType?: string;
 };

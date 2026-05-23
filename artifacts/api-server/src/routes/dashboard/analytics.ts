@@ -21,10 +21,15 @@ function buildSqlWhere(userConds: SQL[], base: SQL = sql`d.status != 'cancelled'
 
 // GET /api/dashboard/sites-breakdown
 router.get("/sites-breakdown", async (req: Request, res: Response): Promise<void> => {
+  const { site } = req.query;
   const whereClause = buildSqlWhere(parseFilters(req.query));
 
+  const sitesQuery = (site && typeof site === "string" && site.toLowerCase() !== "all")
+    ? sql`SELECT id, name, type, region, COALESCE(capacity,0) AS capacity, COALESCE(used,0) AS used, accepted_waste FROM sites WHERE status='active' AND id = ${site} ORDER BY name`
+    : sql`SELECT id, name, type, region, COALESCE(capacity,0) AS capacity, COALESCE(used,0) AS used, accepted_waste FROM sites WHERE status='active' ORDER BY name`;
+
   const [sitesRows, dischargeRows, wasteBreakRows] = await Promise.all([
-    db.execute(sql`SELECT id, name, type, region, COALESCE(capacity,0) AS capacity, COALESCE(used,0) AS used, accepted_waste FROM sites WHERE status='active' ORDER BY name`),
+    db.execute(sitesQuery),
     db.execute(sql`
       SELECT d.site_id,
         COUNT(*) AS discharge_count,
