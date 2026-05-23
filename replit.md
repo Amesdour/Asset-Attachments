@@ -1,36 +1,42 @@
-# [Project name]
+# Landfill Discharges & Waste Operations Analytics Dashboard
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A French-language operations control centre for landfill waste management, tracking discharges, capacity, revenue, and client invoicing for EWGCET Jijel.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `bash scripts/start.sh` — start both the API server (port 3001) and Vite frontend (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server only
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `DATABASE_URL` — Postgres connection string (auto-provisioned by Replit)
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
+- API: Express 5 (port 3001)
+- Frontend: React 19 + Vite (port 5000, proxies /api → 3001)
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Build: esbuild (ESM bundle)
+- Charts: Recharts
+- UI: Radix UI + Tailwind CSS 4 + shadcn-style components
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/api-server/src/routes/dashboard/` — all API endpoints (KPIs, analytics, forecast, logs, AI insights)
+- `artifacts/landfill-dashboard/src/` — React frontend
+- `lib/db/src/schema/` — Drizzle table definitions
+- `lib/api-spec/openapi.yaml` — OpenAPI 3.1 spec (source of truth for API shape)
+- `lib/api-client-react/` — generated React Query hooks (run codegen to regenerate)
 
-## Architecture decisions
+## Database tables
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
-
-## Product
-
-_Describe the high-level user-facing capabilities of this app once they exist._
+The app uses both Drizzle-managed tables and raw SQL tables:
+- **Drizzle-managed:** `waste_logs`, `landfill_config`
+- **Raw SQL (created on import):** `discharges`, `sites`, `waste_types`, `clients`, `users`, `invoices`
 
 ## User preferences
 
@@ -38,8 +44,6 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- The Vite dev server proxies `/api/*` to `http://localhost:3001` — keep the API on port 3001
+- `pnpm install` must be run from the workspace root, not from individual artifact directories
+- The `scripts/start.sh` builds the API before starting, so changes to API code are picked up on restart
