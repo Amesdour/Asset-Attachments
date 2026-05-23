@@ -151,43 +151,95 @@ router.get("/forecast-advanced", async (req: Request, res: Response): Promise<vo
   const horizonYears = Math.min(Math.max(parseInt(String(req.query.years ?? "10")), 1), 30);
   const horizonMonths = horizonYears * 12;
 
-  // ── Fetch all data in parallel ──
-  const [sitesRows, monthlyRows, siteMonthlyRows, wasteMonthlyRows, revenueRows] = await Promise.all([
-    db.execute(sql`SELECT id, name, region, COALESCE(used,0) AS used, COALESCE(capacity,0) AS capacity FROM sites WHERE status='active' ORDER BY name`),
+  // ── Fetch all data in parallel — daily granularity ──
+  const sitesPromise = db.execute(sql`SELECT id, name, region, COALESCE(used,0) AS used, COALESCE(capacity,0) AS capacity FROM sites WHERE status='active' ORDER BY name`);
+
+  const [sitesRows, monthlyRowsDay, siteMonthlyRowsDay, wasteMonthlyRowsDay, revenueRowsDay] = await Promise.all([
+    sitesPromise,
     db.execute(sql`
-      SELECT to_char(date_trunc('month', ts), 'YYYY-MM-DD') AS month,
+      SELECT to_char(date_trunc('day', ts), 'YYYY-MM-DD') AS month,
         COALESCE(SUM(net),0) AS volume, COALESCE(SUM(total),0) AS revenue, COUNT(*) AS cnt
       FROM discharges WHERE status != 'cancelled'
-      GROUP BY date_trunc('month', ts) ORDER BY 1
+      GROUP BY date_trunc('day', ts) ORDER BY 1
     `),
     db.execute(sql`
-      SELECT site_id, to_char(date_trunc('month', ts), 'YYYY-MM-DD') AS month,
+      SELECT site_id, to_char(date_trunc('day', ts), 'YYYY-MM-DD') AS month,
         COALESCE(SUM(net),0) AS volume
       FROM discharges WHERE status != 'cancelled'
-      GROUP BY site_id, date_trunc('month', ts) ORDER BY site_id, month
+      GROUP BY site_id, date_trunc('day', ts) ORDER BY site_id, month
     `),
     db.execute(sql`
       SELECT waste_type, COALESCE(wt.label, d.waste_type) AS label,
-        to_char(date_trunc('month', d.ts), 'YYYY-MM-DD') AS month,
+        to_char(date_trunc('day', d.ts), 'YYYY-MM-DD') AS month,
         COALESCE(SUM(d.net),0) AS volume
       FROM discharges d LEFT JOIN waste_types wt ON wt.id = d.waste_type
       WHERE d.status != 'cancelled'
-      GROUP BY d.waste_type, wt.label, date_trunc('month', d.ts) ORDER BY 1, 3
+      GROUP BY d.waste_type, wt.label, date_trunc('day', d.ts) ORDER BY 1, 3
     `),
     db.execute(sql`
-      SELECT to_char(date_trunc('month', ts), 'YYYY-MM-DD') AS month,
+      SELECT to_char(date_trunc('day', ts), 'YYYY-MM-DD') AS month,
         COALESCE(SUM(total),0) AS revenue
       FROM discharges WHERE status != 'cancelled'
-      GROUP BY date_trunc('month', ts) ORDER BY 1
+      GROUP BY date_trunc('day', ts) ORDER BY 1
     `),
   ]);
 
-  const monthlyData = (monthlyRows.rows as Record<string, unknown>[]).map(r => ({
-    month: String(r.month),
-    volume: parseFloat(String(r.volume ?? 0)),
-    revenue: parseFloat(String(r.revenue ?? 0)),
-    cnt: parseInt(String(r.cnt ?? 0)),
-  }));
+  const parseRows = (rows: { rows: unknown[] }) =>
+    (rows.rows as Record<string, unknown>[]).map(r => ({
+      month: String(r.month),
+      volume: parseFloat(String(r.volume ?? 0)),
+      revenue: parseFloat(String(r.revenue ?? 0)),
+      cnt: parseInt(String(r.cnt ?? 0)),
+    }));
+
+  let monthlyData = parseRows(monthlyRowsDay);
+  let monthlyRows = monthlyRowsDay;
+  let siteMonthlyRows = siteMonthlyRowsDay;
+  let wasteMonthlyRows = wasteMonthlyRowsDay;
+  let revenueRows = revenueRowsDay;
+
+  // Fallback to hourly if fewer than 7 daily data points
+  if (monthlyData.length < 7) {
+    const [mr, smr, wmr, rr] = await Promise.all([
+      db.execute(sql`
+        SELECT to_char(date_trunc('hour', ts), 'YYYY-MM-DD HH24:00') AS month,
+          COALESCE(SUM(net),0) AS volume, COALESCE(SUM(total),0) AS revenue, COUNT(*) AS cnt
+        FROM discharges WHERE status != 'cancelled'
+        GROUP BY date_trunc('hour', ts) ORDER BY 1
+      `),
+      db.execute(sql`
+        SELECT site_id, to_char(date_trunc('hour', ts), 'YYYY-MM-DD HH24:00') AS month,
+          COALESCE(SUM(net),0) AS volume
+        FROM discharges WHERE status != 'cancelled'
+        GROUP BY site_id, date_trunc('hour', ts) ORDER BY site_id, month
+      `),
+      db.execute(sql`
+        SELECT waste_type, COALESCE(wt.label, d.waste_type) AS label,
+          to_char(date_trunc('hour', d.ts), 'YYYY-MM-DD HH24:00') AS month,
+          COALESCE(SUM(d.net),0) AS volume
+        FROM discharges d LEFT JOIN waste_types wt ON wt.id = d.waste_type
+        WHERE d.status != 'cancelled'
+        GROUP BY d.waste_type, wt.label, date_trunc('hour', d.ts) ORDER BY 1, 3
+      `),
+      db.execute(sql`
+        SELECT to_char(date_trunc('hour', ts), 'YYYY-MM-DD HH24:00') AS month,
+          COALESCE(SUM(total),0) AS revenue
+        FROM discharges WHERE status != 'cancelled'
+        GROUP BY date_trunc('hour', ts) ORDER BY 1
+      `),
+    ]);
+    monthlyRows = mr;
+    siteMonthlyRows = smr;
+    wasteMonthlyRows = wmr;
+    revenueRows = rr;
+    monthlyData = parseRows(monthlyRows);
+  }
+
+  // Insufficient data guard — return clear error
+  if (monthlyData.length < 3) {
+    res.json({ error: "Données insuffisantes pour la prévision — minimum 3 jours de données requis" });
+    return;
+  }
 
   const volumes = monthlyData.map(d => d.volume);
   const revenues = monthlyData.map(d => d.revenue);

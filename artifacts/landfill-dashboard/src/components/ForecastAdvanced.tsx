@@ -59,7 +59,7 @@ function ModelBadge({ data }: { data: AdvancedForecastResult["modelStats"] }) {
         </Badge>
       )}
       <Badge variant="outline" className="gap-1 text-[11px] text-muted-foreground">
-        {data.monthlyDataPoints} semaines d'historique
+        {data.monthlyDataPoints} jours d'historique
       </Badge>
     </div>
   );
@@ -190,7 +190,7 @@ function SiteTimeline({ data, scenario }: { data: AdvancedForecastResult; scenar
         const pct = site.pctUsed;
         const barColor = pct > 80 ? "#dc2626" : pct > 50 ? "#f59e0b" : "#16a34a";
         const trend = site.trendMtPerMonth;
-        const trendLabel = trend > 1 ? `+${trend.toFixed(1)}t/semaine` : trend < -0.5 ? `${trend.toFixed(1)}t/semaine` : "stable";
+        const trendLabel = trend > 1 ? `+${trend.toFixed(1)}t/jour` : trend < -0.5 ? `${trend.toFixed(1)}t/jour` : "stable";
         const trendColor = trend > 1 ? "text-red-500" : trend < -0.5 ? "text-emerald-500" : "text-muted-foreground";
 
         return (
@@ -243,7 +243,7 @@ function SiteTimeline({ data, scenario }: { data: AdvancedForecastResult; scenar
               </div>
 
               <div className="flex items-center gap-3 mt-2 text-[10px]">
-                <span className="text-muted-foreground">Rythme actuel : {fmt(site.monthlyRateMt, 1)} t/semaine</span>
+                <span className="text-muted-foreground">Rythme actuel : {fmt(site.monthlyRateMt, 1)} t/jour</span>
                 <span className={`font-semibold ${trendColor}`}>{trendLabel}</span>
                 <span className="text-muted-foreground">Restant : {fmt(remaining, 0)} t</span>
               </div>
