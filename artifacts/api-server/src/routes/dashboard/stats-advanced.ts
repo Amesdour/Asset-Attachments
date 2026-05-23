@@ -32,8 +32,7 @@ router.get("/stats-advanced", async (_req: Request, res: Response): Promise<void
         GROUP BY d.site_id, s.name, date_trunc('week', d.ts) ORDER BY 1, 3
       `),
       db.execute(sql`
-        SELECT d.waste_type, COALESCE(wt.l
-abel, d.waste_type) AS label, d.site_id,
+       SELECT d.waste_type, COALESCE(wt.label, d.waste_type) AS label, d.site_id,
           COUNT(*) AS cnt, COALESCE(SUM(d.net),0) AS volume
         FROM discharges d LEFT JOIN waste_types wt ON wt.id = d.waste_type
         WHERE d.status != 'cancelled'
