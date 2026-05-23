@@ -25,11 +25,11 @@ router.get("/stats-advanced", async (_req: Request, res: Response): Promise<void
     `),
     db.execute(sql`
       SELECT site_id, s.name AS site_name,
-        to_char(date_trunc('month', d.ts), 'YYYY-MM-DD') AS month,
-        COALESCE(SUM(d.net),0) AS volume, COUNT(*) AS cnt
+to_char(date_trunc('week', d.ts), 'YYYY-MM-DD') AS month
+COALESCE(SUM(d.net),0) AS volume, COUNT(*) AS cnt
       FROM discharges d JOIN sites s ON s.id = d.site_id
       WHERE d.status != 'cancelled'
-      GROUP BY d.site_id, s.name, date_trunc('month', d.ts) ORDER BY 1, 3
+      GROUP BY d.site_id, s.name, date_trunc('week', d.ts) ORDER BY 1, 3
     `),
     db.execute(sql`
       SELECT d.waste_type, COALESCE(wt.label, d.waste_type) AS label, d.site_id,
@@ -41,8 +41,8 @@ router.get("/stats-advanced", async (_req: Request, res: Response): Promise<void
     db.execute(sql`
       SELECT d.net, d.total, d.site_id, d.waste_type, d.client_name,
         to_char(d.ts, 'YYYY-MM-DD') AS day,
-        to_char(date_trunc('month', d.ts), 'YYYY-MM-DD') AS month
-      FROM discharges d WHERE d.status != 'cancelled' ORDER BY d.ts
+to_char(date_trunc('week', d.ts), 'YYYY-MM-DD') AS month,
+FROM discharges d WHERE d.status != 'cancelled' ORDER BY d.ts
     `),
     db.execute(sql`
       SELECT to_char(date_trunc('day', ts), 'YYYY-MM-DD') AS day, COUNT(*) AS cnt
