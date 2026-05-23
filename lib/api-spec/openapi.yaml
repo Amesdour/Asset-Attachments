@@ -179,6 +179,9 @@ paths:
         - in: query
           name: years
           schema: { type: integer }
+        - in: query
+          name: siteId
+          schema: { type: string }
       responses:
         "200":
           description: Advanced forecast result

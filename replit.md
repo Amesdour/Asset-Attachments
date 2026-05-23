@@ -1,6 +1,6 @@
 # Landfill Discharges & Waste Operations Analytics Dashboard
 
-A French-language operations control centre for landfill waste management, tracking discharges, capacity, revenue, and client invoicing for EWGCET Jijel.
+A French-language operations control centre for landfill waste management, tracking discharges, capacity, revenue, and client invoicing for EPWGCET Jijel (Etablissement Publique de Wilaya de Gestion des Centres d'Enfouissement Technique).
 
 ## Run & Operate
 

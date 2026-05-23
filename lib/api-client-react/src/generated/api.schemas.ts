@@ -487,6 +487,7 @@ months?: number;
 
 export type GetDashboardForecastAdvancedParams = {
 years?: number;
+siteId?: string;
 };
 
 export type GetDashboardLogsParams = {

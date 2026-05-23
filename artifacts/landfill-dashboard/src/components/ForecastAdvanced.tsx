@@ -344,12 +344,20 @@ function RevenueChart({ data, horizonYears }: { data: AdvancedForecastResult; ho
 export function ForecastAdvanced() {
   const [horizonYears, setHorizonYears] = useState(10);
   const [scenario, setScenario] = useState<Scenario>("base");
+  const [selectedSite, setSelectedSite] = useState<string>("");
 
-  const { data, isLoading, isFetching } = useGetDashboardForecastAdvanced({ years: horizonYears });
+  const { data, isLoading, isFetching } = useGetDashboardForecastAdvanced({
+    years: horizonYears,
+    ...(selectedSite ? { siteId: selectedSite } : {}),
+  });
   const loading = isLoading || isFetching;
 
   const modelStats = data?.modelStats;
   const qualityColor = modelStats ? (modelStats.rSquared > 0.7 ? "text-emerald-600" : modelStats.rSquared > 0.4 ? "text-amber-600" : "text-red-500") : "";
+
+  // Site list always comes from siteProjections (which is always global, unfiltered by siteId)
+  const siteOptions = data?.siteProjections ?? [];
+  const selectedSiteName = siteOptions.find(s => s.siteId === selectedSite)?.siteName ?? null;
 
   return (
     <div className="space-y-5">
@@ -366,7 +374,24 @@ export function ForecastAdvanced() {
                 Lissage exponentiel double (α=0.35, β=0.12) · Intervalles de confiance 80%/95% · 3 scénarios
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-end gap-3">
+              {/* Site selector */}
+              <div>
+                <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wide">Site</p>
+                <Select value={selectedSite} onValueChange={setSelectedSite}>
+                  <SelectTrigger className="h-[30px] text-xs w-[160px]">
+                    <SelectValue placeholder="Tous les sites" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="" className="text-xs">Tous les sites</SelectItem>
+                    {siteOptions.map(s => (
+                      <SelectItem key={s.siteId} value={s.siteId} className="text-xs">
+                        {s.siteName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               {/* Horizon selector */}
               <div>
                 <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wide">Horizon</p>
@@ -427,7 +452,9 @@ export function ForecastAdvanced() {
         <CardHeader className="pb-2 pt-4 px-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold">
-              Prévision volume collecté — {horizonYears} ans ({scenario === "base" ? "Scénario base" : scenario === "pessimistic" ? "Scénario pessimiste" : "Scénario optimiste"})
+              Prévision volume collecté — {horizonYears} ans
+              {selectedSiteName ? ` · ${selectedSiteName}` : " · Tous les sites"}
+              {" "}({scenario === "base" ? "Scénario base" : scenario === "pessimistic" ? "Scénario pessimiste" : "Scénario optimiste"})
             </CardTitle>
             <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
               <span className="flex items-center gap-1"><span className="inline-block w-4 h-0.5 bg-slate-400" /> Historique</span>

@@ -8,4 +8,5 @@
 
 export type GetDashboardForecastAdvancedParams = {
 years?: number;
+siteId?: string;
 };

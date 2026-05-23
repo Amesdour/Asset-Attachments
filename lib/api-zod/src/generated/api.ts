@@ -233,7 +233,8 @@ export const GetDashboardStatsAdvancedResponse = zod.object({
  * @summary Smart multi-year forecasting with Holt-Winters + confidence intervals
  */
 export const GetDashboardForecastAdvancedQueryParams = zod.object({
-  "years": zod.coerce.number().optional()
+  "years": zod.coerce.number().optional(),
+  "siteId": zod.coerce.string().optional()
 })
 
 export const GetDashboardForecastAdvancedResponse = zod.object({
