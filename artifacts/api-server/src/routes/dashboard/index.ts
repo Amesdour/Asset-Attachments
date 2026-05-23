@@ -234,40 +234,44 @@ router.get("/treatment-methods", async (req: Request, res: Response): Promise<vo
 router.get("/forecast", async (req: Request, res: Response): Promise<void> => {
   const forecastMonths = parseInt(String(req.query.months ?? "12"));
 
-  const [sitesRows, monthlyRows, siteMonthlyRows, revenueRows] = await Promise.all([
+  const [sitesRows, monthlyRows, siteMonthlyRows, revenueRows, totalCapRow] = await Promise.all([
     db.execute(sql`
       SELECT id, name, COALESCE(used,0) AS used, COALESCE(capacity,0) AS capacity
       FROM sites WHERE status = 'active' ORDER BY name
     `),
     db.execute(sql`
       SELECT
-        to_char(date_trunc('month', ts), 'YYYY-MM-DD') AS month,
+        to_char(date_trunc('week', ts), 'YYYY-MM-DD') AS month,
         COALESCE(SUM(net), 0) AS volume
       FROM discharges WHERE status != 'cancelled'
-      GROUP BY date_trunc('month', ts)
-      ORDER BY date_trunc('month', ts)
+      GROUP BY date_trunc('week', ts)
+      ORDER BY date_trunc('week', ts)
     `),
     db.execute(sql`
       SELECT
         site_id,
-        to_char(date_trunc('month', ts), 'YYYY-MM-DD') AS month,
+        to_char(date_trunc('week', ts), 'YYYY-MM-DD') AS month,
         COALESCE(SUM(net), 0) AS volume
       FROM discharges WHERE status != 'cancelled'
-      GROUP BY site_id, date_trunc('month', ts)
+      GROUP BY site_id, date_trunc('week', ts)
       ORDER BY site_id, month
     `),
     db.execute(sql`
       SELECT
-        to_char(date_trunc('month', ts), 'YYYY-MM-DD') AS month,
+        to_char(date_trunc('week', ts), 'YYYY-MM-DD') AS month,
         COALESCE(SUM(total), 0) AS revenue
       FROM discharges WHERE status != 'cancelled'
-      GROUP BY date_trunc('month', ts)
-      ORDER BY date_trunc('month', ts)
+      GROUP BY date_trunc('week', ts)
+      ORDER BY date_trunc('week', ts)
+    `),
+    db.execute(sql`
+      SELECT COALESCE(SUM(capacity), 0) AS total_cap
+      FROM sites WHERE status = 'active'
     `),
   ]);
 
   const totalUsed = (sitesRows.rows as Record<string, unknown>[]).reduce((s, r) => s + parseFloat(String(r.used ?? 0)), 0);
-  const capacityMax = (sitesRows.rows as Record<string, unknown>[]).reduce((s, r) => s + parseFloat(String(r.capacity ?? 0)), 0) || 180000000;
+  const capacityMax = parseFloat(String((totalCapRow.rows[0] as Record<string, unknown>)?.total_cap ?? 0)) || (sitesRows.rows as Record<string, unknown>[]).reduce((s, r) => s + parseFloat(String(r.capacity ?? 0)), 0);
 
   const monthlyData = (monthlyRows.rows as Record<string, unknown>[]).map((r) => ({
     month: String(r.month),
