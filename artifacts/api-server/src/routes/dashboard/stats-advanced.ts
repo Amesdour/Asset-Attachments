@@ -51,3 +51,54 @@ abel, d.waste_type) AS label, d.site_id,
         GROUP BY date_trunc('day', ts) ORDER BY 1
       `),
     ]);
+const monthly = (monthlyRows.rows as Record<string, unknown>[]).map(r => ({
+      month: String(r.month),
+      volume: parseFloat(String(r.volume ?? 0)),
+      revenue: parseFloat(String(r.revenue ?? 0)),
+      cnt: parseInt(String(r.cnt ?? 0)),
+      avgNet: parseFloat(String(r.avg_net ?? 0)),
+    }));
+
+    const allDischarges = (dischRows.rows as Record<string, unknown>[]).map(r => ({
+      net: parseFloat(String(r.net ?? 0)),
+      total: parseFloat(String(r.total ?? 0)),
+      siteId: String(r.site_id ?? ""),
+      wasteType: String(r.waste_type ?? ""),
+      clientName: String(r.client_name ?? ""),
+      day: String(r.day ?? ""),
+      month: String(r.month ?? ""),
+    }));
+
+    const dailyCounts = (dailyCountRows.rows as Record<string, unknown>[]).map(r => parseInt(String(r.cnt ?? 0)));
+
+    const volumes = monthly.map(m => m.volume);
+    const revenues = monthly.map(m => m.revenue);
+    const counts = monthly.map(m => m.cnt);
+
+    function descStats(xs: number[], label: string) {
+      if (!xs.length) return { variable: label, n: 0, mean: 0, median: 0, std: 0, min: 0, max: 0, q1: 0, q3: 0, skewness: 0, kurtosis: 0, cv: 0 };
+      const s = std(xs);
+      const cvResult = mean(xs) > 0 ? s / mean(xs) : 0;
+      return {
+        variable: label, n: xs.length,
+        mean: parseFloat(mean(xs).toFixed(4)),
+        median: parseFloat(median(xs).toFixed(4)),
+        std: parseFloat(s.toFixed(4)),
+        min: parseFloat(Math.min(...xs).toFixed(4)),
+        max: parseFloat(Math.max(...xs).toFixed(4)),
+        q1: parseFloat(percentile(xs, 25).toFixed(4)),
+        q3: parseFloat(percentile(xs, 75).toFixed(4)),
+        skewness: parseFloat(skewness(xs).toFixed(4)),
+        kurtosis: parseFloat(kurtosis(xs).toFixed(4)),
+        cv: parseFloat(cvResult.toFixed(4)),
+      };
+    }
+
+    const descriptiveStats = [
+      descStats(volumes, "Volume hebdomadaire (t)"),
+      descStats(revenues, "Revenus hebdomadaires (DZD)"),
+      descStats(counts, "Décharges / semaine"),
+      descStats(allDischarges.map(d => d.net), "Poids net par décharge (t)"),
+      descStats(allDischarges.map(d => d.total), "Montant par décharge (DZD)"),
+      descStats(dailyCounts, "Décharges par jour"),
+    ];
