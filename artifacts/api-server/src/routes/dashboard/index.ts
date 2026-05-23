@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { db } from "@workspace/db";
-import { sql } from "drizzle-orm";
+import { sql, SQL } from "drizzle-orm";
 import analyticsRouter from "./analytics.js";
 import forecastAdvancedRouter from "./forecast-advanced.js";
 import statsAdvancedRouter from "./stats-advanced.js";
@@ -10,38 +10,29 @@ router.use(analyticsRouter);
 router.use(forecastAdvancedRouter);
 router.use(statsAdvancedRouter);
 
-function parseFilters(query: Request["query"]) {
-  const conditions: string[] = [];
-  const values: unknown[] = [];
-  let idx = 1;
-
+function parseFilters(query: Request["query"]): SQL[] {
   const { dateFrom, dateTo, wasteType, site } = query;
-
+  const conds: SQL[] = [];
   if (dateFrom && typeof dateFrom === "string") {
-    conditions.push(`d.ts >= $${idx++}`);
-    values.push(new Date(dateFrom));
+    conds.push(sql`d.ts >= ${new Date(dateFrom)}`);
   }
   if (dateTo && typeof dateTo === "string") {
     const end = new Date(dateTo);
     end.setHours(23, 59, 59, 999);
-    conditions.push(`d.ts <= $${idx++}`);
-    values.push(end);
+    conds.push(sql`d.ts <= ${end}`);
   }
-  if (wasteType && typeof wasteType === "string" && wasteType !== "All") {
-    conditions.push(`d.waste_type = $${idx++}`);
-    values.push(wasteType);
+  if (wasteType && typeof wasteType === "string" && wasteType.toLowerCase() !== "all") {
+    conds.push(sql`d.waste_type = ${wasteType}`);
   }
-  if (site && typeof site === "string" && site !== "All") {
-    conditions.push(`d.site_id = $${idx++}`);
-    values.push(site);
+  if (site && typeof site === "string" && site.toLowerCase() !== "all") {
+    conds.push(sql`d.site_id = ${site}`);
   }
-
-  return { conditions, values };
+  return conds;
 }
 
-function buildWhere(conditions: string[], baseCondition = "d.status != 'cancelled'") {
-  const all = [baseCondition, ...conditions];
-  return all.length ? `WHERE ${all.join(" AND ")}` : "";
+function buildSqlWhere(userConds: SQL[], base: SQL = sql`d.status != 'cancelled'`): SQL {
+  const all: SQL[] = [base, ...userConds];
+  return sql`WHERE ${sql.join(all, sql` AND `)}`;
 }
 
 // GET /api/dashboard/kpis
@@ -129,21 +120,21 @@ router.get("/kpis", async (req: Request, res: Response): Promise<void> => {
 // GET /api/dashboard/timeseries
 router.get("/timeseries", async (req: Request, res: Response): Promise<void> => {
   const rawGranularity = req.query.granularity;
-  const granularity = rawGranularity === "weekly" ? "week" : "day";
-  const { conditions, values } = parseFilters(req.query);
-  const where = buildWhere(conditions);
+  const gran = rawGranularity === "weekly" ? "week" : "day";
+  const userConds = parseFilters(req.query);
+  const whereClause = buildSqlWhere(userConds);
 
-  const rows = await db.execute(
-    sql.raw(`
-      SELECT
-        to_char(date_trunc('${granularity}', d.ts), 'YYYY-MM-DD') AS date,
-        COALESCE(SUM(d.net), 0) AS "weightMt"
-      FROM discharges d
-      ${where}
-      GROUP BY date_trunc('${granularity}', d.ts)
-      ORDER BY date_trunc('${granularity}', d.ts)
-    `, values)
-  );
+  // date_trunc first arg must be a literal, not a bound param — use sql.raw for our controlled value
+  const granLit = sql.raw(`'${gran}'`);
+  const rows = await db.execute(sql`
+    SELECT
+      to_char(date_trunc(${granLit}, d.ts), 'YYYY-MM-DD') AS date,
+      COALESCE(SUM(d.net), 0) AS "weightMt"
+    FROM discharges d
+    ${whereClause}
+    GROUP BY date_trunc(${granLit}, d.ts)
+    ORDER BY date_trunc(${granLit}, d.ts)
+  `);
 
   res.json(
     rows.rows.map((r: Record<string, unknown>) => ({
@@ -155,22 +146,20 @@ router.get("/timeseries", async (req: Request, res: Response): Promise<void> => 
 
 // GET /api/dashboard/waste-categories
 router.get("/waste-categories", async (req: Request, res: Response): Promise<void> => {
-  const { conditions, values } = parseFilters(req.query);
-  const where = buildWhere(conditions);
+  const userConds = parseFilters(req.query);
+  const whereClause = buildSqlWhere(userConds);
 
-  const rows = await db.execute(
-    sql.raw(`
-      SELECT
-        COALESCE(wt.label, d.waste_type) AS category,
-        COALESCE(SUM(d.net), 0) AS collected,
-        COALESCE(SUM(CASE WHEN d.status IN ('settled','paid') THEN d.net ELSE 0 END), 0) AS treated
-      FROM discharges d
-      LEFT JOIN waste_types wt ON wt.id = d.waste_type
-      ${where}
-      GROUP BY d.waste_type, wt.label
-      ORDER BY d.waste_type
-    `, values)
-  );
+  const rows = await db.execute(sql`
+    SELECT
+      COALESCE(wt.label, d.waste_type) AS category,
+      COALESCE(SUM(d.net), 0) AS collected,
+      COALESCE(SUM(CASE WHEN d.status IN ('settled','paid') THEN d.net ELSE 0 END), 0) AS treated
+    FROM discharges d
+    LEFT JOIN waste_types wt ON wt.id = d.waste_type
+    ${whereClause}
+    GROUP BY d.waste_type, wt.label
+    ORDER BY d.waste_type
+  `);
 
   res.json(
     rows.rows.map((r: Record<string, unknown>) => ({
@@ -183,28 +172,25 @@ router.get("/waste-categories", async (req: Request, res: Response): Promise<voi
 
 // GET /api/dashboard/treatment-methods
 router.get("/treatment-methods", async (req: Request, res: Response): Promise<void> => {
-  const { conditions, values } = parseFilters(req.query);
-  const where = buildWhere(conditions);
+  const userConds = parseFilters(req.query);
+  const whereClause = buildSqlWhere(userConds);
 
-  const rows = await db.execute(
-    sql.raw(`
+  const [rows, totalResult] = await Promise.all([
+    db.execute(sql`
       SELECT
         d.pay_method AS method,
         COALESCE(SUM(d.net), 0) AS value
       FROM discharges d
-      ${where}
+      ${whereClause}
       GROUP BY d.pay_method
       ORDER BY value DESC
-    `, values)
-  );
-
-  const totalResult = await db.execute(
-    sql.raw(`
+    `),
+    db.execute(sql`
       SELECT COALESCE(SUM(d.net), 0) AS total
       FROM discharges d
-      ${where}
-    `, values)
-  );
+      ${whereClause}
+    `),
+  ]);
 
   const total = parseFloat(String(totalResult.rows[0]?.total ?? 1));
 
@@ -358,25 +344,24 @@ router.get("/logs", async (req: Request, res: Response): Promise<void> => {
   const page = parseInt(String(req.query.page ?? "1"));
   const pageSize = parseInt(String(req.query.pageSize ?? "20"));
   const offset = (page - 1) * pageSize;
-  const { conditions, values } = parseFilters(req.query);
-
-  const allConditions = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const userConds = parseFilters(req.query);
+  // Logs show all statuses — no base status filter
+  const whereClause = userConds.length > 0
+    ? sql`WHERE ${sql.join(userConds, sql` AND `)}`
+    : sql``;
 
   const [countResult, logsResult] = await Promise.all([
-    db.execute(sql.raw(`SELECT COUNT(*) AS cnt FROM discharges d ${allConditions}`, values)),
-    db.execute(
-      sql.raw(
-        `SELECT d.id, d.ts, d.site_id, d.client_name, d.truck, d.waste_type,
-                wt.label AS waste_label, d.gross, d.tare, d.net, d.total,
-                d.status, d.pay_method, d.op_type, d.correction_reason
-         FROM discharges d
-         LEFT JOIN waste_types wt ON wt.id = d.waste_type
-         ${allConditions}
-         ORDER BY d.ts DESC
-         LIMIT ${pageSize} OFFSET ${offset}`,
-        values
-      )
-    ),
+    db.execute(sql`SELECT COUNT(*) AS cnt FROM discharges d ${whereClause}`),
+    db.execute(sql`
+      SELECT d.id, d.ts, d.site_id, d.client_name, d.truck, d.waste_type,
+             wt.label AS waste_label, d.gross, d.tare, d.net, d.total,
+             d.status, d.pay_method, d.op_type, d.correction_reason
+      FROM discharges d
+      LEFT JOIN waste_types wt ON wt.id = d.waste_type
+      ${whereClause}
+      ORDER BY d.ts DESC
+      LIMIT ${pageSize} OFFSET ${offset}
+    `),
   ]);
 
   res.json({

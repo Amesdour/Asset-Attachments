@@ -1,49 +1,48 @@
 import { Router, Request, Response } from "express";
 import { db } from "@workspace/db";
-import { sql } from "drizzle-orm";
+import { sql, SQL } from "drizzle-orm";
 
 const router = Router();
 
-function parseFilters(query: Request["query"]) {
-  const conditions: string[] = [];
-  const values: unknown[] = [];
-  let idx = 1;
-  const { dateFrom, dateTo, site } = query;
-  if (dateFrom && typeof dateFrom === "string") { conditions.push(`d.ts >= $${idx++}`); values.push(new Date(dateFrom)); }
-  if (dateTo && typeof dateTo === "string") { const e = new Date(dateTo); e.setHours(23,59,59,999); conditions.push(`d.ts <= $${idx++}`); values.push(e); }
-  if (site && typeof site === "string" && site !== "All") { conditions.push(`d.site_id = $${idx++}`); values.push(site); }
-  return { conditions, values };
+function parseFilters(query: Request["query"]): SQL[] {
+  const { dateFrom, dateTo, wasteType, site } = query;
+  const conds: SQL[] = [];
+  if (dateFrom && typeof dateFrom === "string") { conds.push(sql`d.ts >= ${new Date(dateFrom)}`); }
+  if (dateTo && typeof dateTo === "string") { const e = new Date(dateTo); e.setHours(23,59,59,999); conds.push(sql`d.ts <= ${e}`); }
+  if (wasteType && typeof wasteType === "string" && wasteType.toLowerCase() !== "all") { conds.push(sql`d.waste_type = ${wasteType}`); }
+  if (site && typeof site === "string" && site.toLowerCase() !== "all") { conds.push(sql`d.site_id = ${site}`); }
+  return conds;
 }
 
-function buildWhere(conditions: string[], base = "d.status != 'cancelled'") {
-  return `WHERE ${[base, ...conditions].join(" AND ")}`;
+function buildSqlWhere(userConds: SQL[], base: SQL = sql`d.status != 'cancelled'`): SQL {
+  const all: SQL[] = [base, ...userConds];
+  return sql`WHERE ${sql.join(all, sql` AND `)}`;
 }
 
 // GET /api/dashboard/sites-breakdown
 router.get("/sites-breakdown", async (req: Request, res: Response): Promise<void> => {
-  const { conditions, values } = parseFilters(req.query);
-  const where = buildWhere(conditions);
+  const whereClause = buildSqlWhere(parseFilters(req.query));
 
   const [sitesRows, dischargeRows, wasteBreakRows] = await Promise.all([
     db.execute(sql`SELECT id, name, type, region, COALESCE(capacity,0) AS capacity, COALESCE(used,0) AS used, accepted_waste FROM sites WHERE status='active' ORDER BY name`),
-    db.execute(sql.raw(`
+    db.execute(sql`
       SELECT d.site_id,
         COUNT(*) AS discharge_count,
         COALESCE(SUM(d.net), 0) AS total_weight,
         COALESCE(SUM(d.total), 0) AS total_revenue
-      FROM discharges d ${where}
+      FROM discharges d ${whereClause}
       GROUP BY d.site_id
-    `, values)),
-    db.execute(sql.raw(`
+    `),
+    db.execute(sql`
       SELECT d.site_id, d.waste_type, COALESCE(wt.label, d.waste_type) AS label,
         COALESCE(SUM(d.net),0) AS weight_mt,
         COALESCE(SUM(d.total),0) AS revenue
       FROM discharges d
       LEFT JOIN waste_types wt ON wt.id = d.waste_type
-      ${where}
+      ${whereClause}
       GROUP BY d.site_id, d.waste_type, wt.label
       ORDER BY d.site_id, revenue DESC
-    `, values)),
+    `),
   ]);
 
   const dischargeMap: Record<string, Record<string, unknown>> = {};
@@ -96,20 +95,19 @@ router.get("/sites-breakdown", async (req: Request, res: Response): Promise<void
 
 // GET /api/dashboard/clients-ranking
 router.get("/clients-ranking", async (req: Request, res: Response): Promise<void> => {
-  const { conditions, values } = parseFilters(req.query);
-  const where = buildWhere(conditions);
+  const whereClause = buildSqlWhere(parseFilters(req.query));
 
   const [dischargeRows, invoiceRows, clientRows] = await Promise.all([
-    db.execute(sql.raw(`
+    db.execute(sql`
       SELECT d.client_id, d.client_name,
         COUNT(*) AS discharge_count,
         COALESCE(SUM(d.net),0) AS total_weight,
         COALESCE(SUM(d.total),0) AS total_revenue,
         MAX(d.ts) AS last_discharge
-      FROM discharges d ${where}
+      FROM discharges d ${whereClause}
       GROUP BY d.client_id, d.client_name
       ORDER BY total_revenue DESC
-    `, values)),
+    `),
     db.execute(sql`
       SELECT client_id,
         COALESCE(SUM(total_amount - paid_amount),0) AS outstanding,
@@ -165,11 +163,13 @@ router.get("/clients-ranking", async (req: Request, res: Response): Promise<void
 
 // GET /api/dashboard/operators-performance
 router.get("/operators-performance", async (req: Request, res: Response): Promise<void> => {
-  const { conditions, values } = parseFilters(req.query);
-  const baseWhere = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const userConds = parseFilters(req.query);
+  // Add op_id check to filter conditions
+  const allConds = [sql`d.op_id IS NOT NULL`, ...userConds];
+  const whereClause = sql`WHERE ${sql.join(allConds, sql` AND `)}`;
 
   const [opRows, userRows] = await Promise.all([
-    db.execute(sql.raw(`
+    db.execute(sql`
       SELECT
         d.op_id,
         d.site_id,
@@ -179,11 +179,10 @@ router.get("/operators-performance", async (req: Request, res: Response): Promis
         COALESCE(SUM(CASE WHEN d.status != 'cancelled' THEN d.net ELSE 0 END),0) AS total_weight,
         COALESCE(SUM(CASE WHEN d.status != 'cancelled' THEN d.total ELSE 0 END),0) AS total_revenue,
         COALESCE(AVG(CASE WHEN d.status != 'cancelled' THEN d.net END),0) AS avg_net
-      FROM discharges d ${baseWhere}
-      WHERE d.op_id IS NOT NULL
+      FROM discharges d ${whereClause}
       GROUP BY d.op_id, d.site_id
       ORDER BY total_weight DESC
-    `, values)),
+    `),
     db.execute(sql`SELECT id, name, site_id FROM users`),
   ]);
 
@@ -222,49 +221,48 @@ router.get("/operators-performance", async (req: Request, res: Response): Promis
 
 // GET /api/dashboard/revenue-breakdown
 router.get("/revenue-breakdown", async (req: Request, res: Response): Promise<void> => {
-  const { conditions, values } = parseFilters(req.query);
-  const where = buildWhere(conditions);
+  const whereClause = buildSqlWhere(parseFilters(req.query));
 
   const [bySiteRows, byWasteRows, byPayRows, byClientRows, invoiceSummary] = await Promise.all([
-    db.execute(sql.raw(`
+    db.execute(sql`
       SELECT d.site_id, s.name AS site_name,
         COALESCE(SUM(d.total),0) AS revenue,
         COALESCE(SUM(d.net),0) AS weight_mt,
         COUNT(*) AS discharge_count
       FROM discharges d
       LEFT JOIN sites s ON s.id = d.site_id
-      ${where}
+      ${whereClause}
       GROUP BY d.site_id, s.name
       ORDER BY revenue DESC
-    `, values)),
-    db.execute(sql.raw(`
+    `),
+    db.execute(sql`
       SELECT d.waste_type, COALESCE(wt.label, d.waste_type) AS label,
         COALESCE(SUM(d.total),0) AS revenue,
         COALESCE(SUM(d.net),0) AS weight_mt
       FROM discharges d
       LEFT JOIN waste_types wt ON wt.id = d.waste_type
-      ${where}
+      ${whereClause}
       GROUP BY d.waste_type, wt.label
       ORDER BY revenue DESC
-    `, values)),
-    db.execute(sql.raw(`
+    `),
+    db.execute(sql`
       SELECT d.pay_method AS method,
         COALESCE(SUM(d.total),0) AS revenue,
         COUNT(*) AS cnt
-      FROM discharges d ${where}
+      FROM discharges d ${whereClause}
       GROUP BY d.pay_method
       ORDER BY revenue DESC
-    `, values)),
-    db.execute(sql.raw(`
+    `),
+    db.execute(sql`
       SELECT d.client_name,
         COALESCE(SUM(d.total),0) AS revenue,
         COALESCE(SUM(d.net),0) AS weight_mt,
         COUNT(*) AS cnt
-      FROM discharges d ${where}
+      FROM discharges d ${whereClause}
       GROUP BY d.client_name
       ORDER BY revenue DESC
       LIMIT 10
-    `, values)),
+    `),
     db.execute(sql`
       SELECT
         COALESCE(SUM(total_amount),0) AS total_billed,
