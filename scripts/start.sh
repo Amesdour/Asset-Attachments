@@ -13,5 +13,8 @@ echo "Starting frontend on port 5000..."
 pnpm --filter @workspace/landfill-dashboard run dev &
 VITE_PID=$!
 
+echo "Starting port 8081 proxy..."
+node scripts/proxy-8081.mjs &
+
 # Wait for either process to exit
 wait -n $API_PID $VITE_PID
