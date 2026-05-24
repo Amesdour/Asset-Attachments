@@ -28,7 +28,7 @@ router.get("/sites-breakdown", async (req: Request, res: Response): Promise<void
     ? sql`SELECT id, name, type, region, COALESCE(capacity,0) AS capacity, COALESCE(used,0) AS used, accepted_waste FROM sites WHERE status='active' AND id = ${site} ORDER BY name`
     : sql`SELECT id, name, type, region, COALESCE(capacity,0) AS capacity, COALESCE(used,0) AS used, accepted_waste FROM sites WHERE status='active' ORDER BY name`;
 
-  const [sitesRows, dischargeRows, wasteBreakRows] = await Promise.all([
+  const [sitesRows, dischargeRows, cumulativeRows, wasteBreakRows] = await Promise.all([
     db.execute(sitesQuery),
     db.execute(sql`
       SELECT d.site_id,
@@ -37,6 +37,12 @@ router.get("/sites-breakdown", async (req: Request, res: Response): Promise<void
         COALESCE(SUM(d.total), 0) AS total_revenue
       FROM discharges d ${whereClause}
       GROUP BY d.site_id
+    `),
+    db.execute(sql`
+      SELECT site_id, COALESCE(SUM(net), 0) AS cumulative_weight
+      FROM discharges
+      WHERE status != 'cancelled'
+      GROUP BY site_id
     `),
     db.execute(sql`
       SELECT d.site_id, d.waste_type, COALESCE(wt.label, d.waste_type) AS label,
@@ -55,6 +61,11 @@ router.get("/sites-breakdown", async (req: Request, res: Response): Promise<void
     dischargeMap[String(r.site_id)] = r;
   }
 
+  const cumulativeMap: Record<string, number> = {};
+  for (const r of cumulativeRows.rows as Record<string, unknown>[]) {
+    cumulativeMap[String(r.site_id)] = parseFloat(String(r.cumulative_weight ?? 0));
+  }
+
   const wasteMap: Record<string, {wasteType: string; label: string; weightMt: number; revenue: number}[]> = {};
   for (const r of wasteBreakRows.rows as Record<string, unknown>[]) {
     const sid = String(r.site_id);
@@ -71,7 +82,9 @@ router.get("/sites-breakdown", async (req: Request, res: Response): Promise<void
     const siteId = String(s.id);
     const d = dischargeMap[siteId] ?? {};
     const capacityMt = parseFloat(String(s.capacity ?? 0));
-    const usedMt = parseFloat(String(d.total_weight ?? 0)) || parseFloat(String(s.used ?? 0));
+    const historicalUsedMt = parseFloat(String(s.used ?? 0));
+    const cumulativeDischargesMt = cumulativeMap[siteId] ?? 0;
+    const usedMt = historicalUsedMt + cumulativeDischargesMt;
     const totalWeightMt = parseFloat(String(d.total_weight ?? 0));
     const totalRevenue = parseFloat(String(d.total_revenue ?? 0));
     const dischargeCount = parseInt(String(d.discharge_count ?? 0));
