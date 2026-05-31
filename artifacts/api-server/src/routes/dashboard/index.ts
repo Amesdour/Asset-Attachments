@@ -115,7 +115,7 @@ router.get("/kpis", async (req: Request, res: Response): Promise<void> => {
   const [totalRevenueRow, totalDischargesRow, invoiceRow] = await Promise.all([
     db.execute(sql`SELECT COALESCE(SUM(total),0) AS rev, COALESCE(SUM(net),0) AS wt FROM discharges ${allTimeWhere}`),
     db.execute(sql`SELECT COUNT(*) AS cnt FROM discharges ${allTimeWhere}`),
-    db.execute(sql`SELECT COALESCE(SUM(total_amount-paid_amount),0) AS outstanding, COUNT(*) FILTER (WHERE status='overdue') AS overdue FROM invoices`),
+    db.execute(sql`SELECT COALESCE(SUM(CASE WHEN status NOT IN ('paid','cancelled') THEN total_amount - paid_amount ELSE 0 END), 0) AS outstanding, COUNT(*) FILTER (WHERE status='overdue') AS overdue FROM invoices`),
   ]);
 
   const totalRev = parseFloat(String(totalRevenueRow.rows[0]?.rev ?? 0));
