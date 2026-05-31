@@ -1,8 +1,12 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
 
-export default function Login() {
-  const { login, isLoggingIn, loginError } = useAuth();
+interface LoginProps {
+  login: (email: string, password: string) => Promise<void>;
+  isLoggingIn: boolean;
+  loginError: string | null;
+}
+
+export default function Login({ login, isLoggingIn, loginError }: LoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
