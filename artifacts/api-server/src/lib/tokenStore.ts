@@ -1,30 +1,27 @@
-import crypto from "crypto";
+import { SignJWT, jwtVerify } from "jose";
 
-interface TokenEntry {
-  expires: number;
+const EXPIRY_SECONDS = 8 * 60 * 60; // 8 hours
+
+function getSecret(): Uint8Array {
+  const secret = process.env.SESSION_SECRET ?? "fallback-dev-secret-change-me";
+  return new TextEncoder().encode(secret);
 }
 
-const tokens = new Map<string, TokenEntry>();
-
-export function createToken(): string {
-  const token = crypto.randomBytes(32).toString("hex");
-  const expires = Date.now() + 8 * 60 * 60 * 1000; // 8 hours
-  tokens.set(token, { expires });
-  return token;
+export async function createToken(): Promise<string> {
+  return new SignJWT({ role: "admin" })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(`${EXPIRY_SECONDS}s`)
+    .sign(getSecret());
 }
 
-export function validateToken(token: string): boolean {
-  const entry = tokens.get(token);
-  if (!entry) return false;
-  if (Date.now() > entry.expires) {
-    tokens.delete(token);
+export async function validateToken(token: string): Promise<boolean> {
+  try {
+    await jwtVerify(token, getSecret());
+    return true;
+  } catch {
     return false;
   }
-  return true;
-}
-
-export function deleteToken(token: string): void {
-  tokens.delete(token);
 }
 
 export function extractBearerToken(authHeader: string | undefined): string | null {

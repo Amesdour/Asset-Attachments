@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import crypto from "crypto";
-import { createToken, deleteToken, validateToken, extractBearerToken } from "../lib/tokenStore.js";
+import { createToken, validateToken, extractBearerToken } from "../lib/tokenStore.js";
 
 const router = Router();
 
@@ -14,7 +14,7 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 // POST /api/auth/login
-router.post("/auth/login", (req: Request, res: Response): void => {
+router.post("/auth/login", async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body as { email?: string; password?: string };
 
   const adminEmail = process.env.ADMIN_EMAIL ?? "";
@@ -29,24 +29,22 @@ router.post("/auth/login", (req: Request, res: Response): void => {
   const passOk = timingSafeEqual(password.trim(), adminPassword.trim());
 
   if (emailOk && passOk) {
-    const token = createToken();
+    const token = await createToken();
     res.json({ ok: true, token });
   } else {
     res.status(401).json({ error: "Email ou mot de passe incorrect" });
   }
 });
 
-// POST /api/auth/logout
-router.post("/auth/logout", (req: Request, res: Response): void => {
-  const token = extractBearerToken(req.headers.authorization);
-  if (token) deleteToken(token);
+// POST /api/auth/logout  (JWT is stateless — client just discards the token)
+router.post("/auth/logout", (_req: Request, res: Response): void => {
   res.json({ ok: true });
 });
 
 // GET /api/auth/me
-router.get("/auth/me", (req: Request, res: Response): void => {
+router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
   const token = extractBearerToken(req.headers.authorization);
-  if (token && validateToken(token)) {
+  if (token && (await validateToken(token))) {
     res.json({ authenticated: true, email: process.env.ADMIN_EMAIL ?? "" });
   } else {
     res.status(401).json({ authenticated: false });
