@@ -9,7 +9,7 @@ export default function Login() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await login({ email, password });
+      await login(email, password);
     } catch {
       // error is surfaced via loginError
     }

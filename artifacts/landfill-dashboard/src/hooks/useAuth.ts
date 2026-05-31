@@ -1,9 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useCallback } from "react";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 const TOKEN_KEY = "epwgcet_auth_token";
 
-function getStoredToken(): string | null {
+export function getStoredToken(): string | null {
   try {
     return localStorage.getItem(TOKEN_KEY);
   } catch {
@@ -23,80 +23,92 @@ function setStoredToken(token: string | null): void {
   }
 }
 
-// Wire token into the shared API client so all dashboard hooks send Authorization header
-setAuthTokenGetter(() => getStoredToken());
+// Wire stored token into all generated API hooks
+setAuthTokenGetter(getStoredToken);
 
-interface AuthMe {
-  authenticated: boolean;
-  email?: string;
-}
+type AuthState =
+  | { status: "loading" }
+  | { status: "authenticated"; email: string }
+  | { status: "unauthenticated" };
 
-async function fetchMe(): Promise<AuthMe> {
-  const token = getStoredToken();
-  if (!token) return { authenticated: false };
-  const res = await fetch("/api/auth/me", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    setStoredToken(null);
-    return { authenticated: false };
+async function checkToken(token: string): Promise<string | null> {
+  try {
+    const res = await fetch("/api/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.authenticated ? (data.email ?? "") : null;
+  } catch {
+    return null;
   }
-  return res.json();
 }
 
 export function useAuth() {
-  const queryClient = useQueryClient();
+  const [state, setState] = useState<AuthState>({ status: "loading" });
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const { data, isLoading } = useQuery<AuthMe>({
-    queryKey: ["auth-me"],
-    queryFn: fetchMe,
-    retry: false,
-    staleTime: 5 * 60 * 1000,
-  });
+  // On mount, validate any stored token
+  useEffect(() => {
+    const token = getStoredToken();
+    if (!token) {
+      setState({ status: "unauthenticated" });
+      return;
+    }
+    checkToken(token).then((email) => {
+      if (email !== null) {
+        setState({ status: "authenticated", email });
+      } else {
+        setStoredToken(null);
+        setState({ status: "unauthenticated" });
+      }
+    });
+  }, []);
 
-  const loginMutation = useMutation({
-    mutationFn: async ({ email, password }: { email: string; password: string }) => {
+  const login = useCallback(async (email: string, password: string) => {
+    setLoginError(null);
+    setIsLoggingIn(true);
+    try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error ?? "Erreur de connexion");
-      }
       const data = await res.json();
-      setStoredToken(data.token);
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["auth-me"] });
-    },
-  });
-
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      const token = getStoredToken();
-      if (token) {
-        await fetch("/api/auth/logout", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
+      if (!res.ok) {
+        setLoginError(data.error ?? "Erreur de connexion");
+        return;
       }
-      setStoredToken(null);
-    },
-    onSuccess: () => {
-      queryClient.setQueryData(["auth-me"], { authenticated: false });
-    },
-  });
+      setStoredToken(data.token);
+      setState({ status: "authenticated", email });
+    } catch (err) {
+      console.error("Login error:", err);
+      setLoginError("Erreur réseau. Veuillez réessayer.");
+    } finally {
+      setIsLoggingIn(false);
+    }
+  }, []);
+
+  const logout = useCallback(() => {
+    const token = getStoredToken();
+    if (token) {
+      fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    }
+    setStoredToken(null);
+    setState({ status: "unauthenticated" });
+  }, []);
 
   return {
-    isAuthenticated: data?.authenticated === true,
-    email: data?.email,
-    isLoading,
-    login: loginMutation.mutateAsync,
-    logout: () => logoutMutation.mutate(),
-    isLoggingIn: loginMutation.isPending,
-    loginError: loginMutation.error?.message ?? null,
+    isLoading: state.status === "loading",
+    isAuthenticated: state.status === "authenticated",
+    email: state.status === "authenticated" ? state.email : undefined,
+    login,
+    logout,
+    isLoggingIn,
+    loginError,
   };
 }
