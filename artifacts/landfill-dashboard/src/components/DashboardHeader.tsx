@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { RefreshCw, ChevronDown, Printer, Sun, Moon, Check } from "lucide-react";
+import { RefreshCw, ChevronDown, Printer, Sun, Moon, Check, LogOut } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
 
 const DATA_SOURCES = ["Base de données", "API Pont-bascule"];
 
@@ -19,6 +20,7 @@ export function DashboardHeader({ lastRefreshed, isSpinning, onRefresh }: { last
   const [selectedIntervalMs, setSelectedIntervalMs] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+  const { logout } = useAuth();
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -127,6 +129,16 @@ export function DashboardHeader({ lastRefreshed, isSpinning, onRefresh }: { last
           aria-label="Toggle dark mode"
         >
           {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </button>
+
+        <button
+          onClick={logout}
+          className="flex items-center justify-center w-[28px] h-[28px] rounded-[6px] transition-colors hover:bg-red-100 dark:hover:bg-red-900/30 text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
+          style={{ backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "#F0F1F2" }}
+          aria-label="Se déconnecter"
+          title="Se déconnecter"
+        >
+          <LogOut className="w-4 h-4" />
         </button>
       </div>
     </div>
