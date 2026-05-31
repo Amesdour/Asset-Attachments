@@ -18,7 +18,7 @@ const queryClient = new QueryClient({
 });
 
 function AuthGate() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, login, isLoggingIn, loginError } = useAuth();
 
   if (isLoading) {
     return (
@@ -28,8 +28,8 @@ function AuthGate() {
     );
   }
 
-  if (!isAuthenticated) {
-    return <Login />;
+ if (!isAuthenticated) {
+    return <Login login={login} isLoggingIn={isLoggingIn} loginError={loginError} />;
   }
 
   return (
