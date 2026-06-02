@@ -1,34 +1,35 @@
 import { Router, Request, Response } from "express";
-import crypto from "crypto";
+import { db } from "@workspace/db";
+import { adminCredentialsTable } from "@workspace/db/schema";
+import { eq } from "drizzle-orm";
 import { createToken, validateToken, extractBearerToken } from "../lib/tokenStore.js";
+import { verifyPassword } from "../lib/password.js";
 
 const router = Router();
-
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  try {
-    return crypto.timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
-  } catch {
-    return false;
-  }
-}
 
 // POST /api/auth/login
 router.post("/auth/login", async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body as { email?: string; password?: string };
 
-  const adminEmail = process.env.ADMIN_EMAIL ?? "";
-  const adminPassword = process.env.ADMIN_PASSWORD ?? "";
-
-  if (!email || !password || !adminEmail || !adminPassword) {
+  if (!email || !password) {
     res.status(401).json({ error: "Identifiants invalides" });
     return;
   }
 
-  const emailOk = timingSafeEqual(email.trim().toLowerCase(), adminEmail.trim().toLowerCase());
-  const passOk = timingSafeEqual(password.trim(), adminPassword.trim());
+  const [admin] = await db
+    .select()
+    .from(adminCredentialsTable)
+    .where(eq(adminCredentialsTable.email, email.trim().toLowerCase()))
+    .limit(1);
 
-  if (emailOk && passOk) {
+  if (!admin) {
+    res.status(401).json({ error: "Email ou mot de passe incorrect" });
+    return;
+  }
+
+  const passwordOk = await verifyPassword(password.trim(), admin.passwordHash);
+
+  if (passwordOk) {
     const token = await createToken();
     res.json({ ok: true, token });
   } else {
@@ -36,7 +37,7 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
   }
 });
 
-// POST /api/auth/logout  (JWT is stateless — client just discards the token)
+// POST /api/auth/logout
 router.post("/auth/logout", (_req: Request, res: Response): void => {
   res.json({ ok: true });
 });
@@ -45,7 +46,8 @@ router.post("/auth/logout", (_req: Request, res: Response): void => {
 router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
   const token = extractBearerToken(req.headers.authorization);
   if (token && (await validateToken(token))) {
-    res.json({ authenticated: true, email: process.env.ADMIN_EMAIL ?? "" });
+    const [admin] = await db.select().from(adminCredentialsTable).limit(1);
+    res.json({ authenticated: true, email: admin?.email ?? "" });
   } else {
     res.status(401).json({ authenticated: false });
   }
