@@ -12,6 +12,6 @@ export default defineConfig({
   dialect: "postgresql",
   dbCredentials: {
     url,
-    ssl: process.env.SUPABASE_URL ? "require" : undefined,
+    ssl: (url.includes("supabase.com") || url.includes("supabase.co")) ? "require" : undefined,
   },
 });
