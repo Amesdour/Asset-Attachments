@@ -354,7 +354,9 @@ export function ForecastAdvanced() {
   });
   const loading = isLoading || isFetching;
 
-  const modelStats = data?.modelStats;
+  // If API returned an error object (empty data), treat as no data
+const hasError = data && "error" in data;
+const modelStats = !hasError ? data?.modelStats : undefined;
   const qualityColor = modelStats ? (modelStats.rSquared > 0.7 ? "text-emerald-600" : modelStats.rSquared > 0.4 ? "text-amber-600" : "text-red-500") : "";
 
   // Site list always comes from siteProjections (always global, never filtered by siteId)
@@ -475,7 +477,7 @@ export function ForecastAdvanced() {
       {/* Tabs: Annual Table / Sites / Waste Types / Revenue */}
       {loading ? (
         <Skeleton className="h-64 w-full" />
-      ) : data ? (
+      ) : data && !hasError ? (
         <Tabs defaultValue="annual">
           <TabsList className="h-8 mb-3 bg-muted/50">
             <TabsTrigger value="annual" className="text-xs h-7">Projections annuelles</TabsTrigger>
@@ -551,10 +553,17 @@ export function ForecastAdvanced() {
             </div>
           </TabsContent>
         </Tabs>
+      ) : hasError ? (
+        <Card className="border border-border/60">
+          <CardContent className="p-8 text-center text-muted-foreground text-sm">
+            Données insuffisantes pour générer des prévisions.<br />
+            Ajoutez des décharges pour activer le moteur de prévision.
+          </CardContent>
+        </Card>
       ) : null}
 
       {/* Alert banners for critical sites */}
-      {!loading && data && data.siteProjections.some(s => s.exhaustionYear_pessimistic && s.exhaustionYear_pessimistic < new Date().getFullYear() + 10) && (
+      {!loading && data && !hasError && data.siteProjections.some( => s.exhaustionYear_pessimistic && s.exhaustionYear_pessimistic < new Date().getFullYear() + 10) && (
         <Card className="border-l-4 border-l-red-500 border border-red-200 bg-red-50/50 dark:bg-red-950/20">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
