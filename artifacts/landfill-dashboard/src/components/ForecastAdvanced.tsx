@@ -563,7 +563,7 @@ const modelStats = !hasError ? data?.modelStats : undefined;
       ) : null}
 
       {/* Alert banners for critical sites */}
-      {!loading && data && !hasError && data.siteProjections.some( => s.exhaustionYear_pessimistic && s.exhaustionYear_pessimistic < new Date().getFullYear() + 10) && (
+      {!loading && data && !hasError && data.siteProjections.some(s => s.exhaustionYear_pessimistic && s.exhaustionYear_pessimistic < new Date().getFullYear() + 10) && ( && s.exhaustionYear_pessimistic < new Date().getFullYear() + 10) && (
         <Card className="border-l-4 border-l-red-500 border border-red-200 bg-red-50/50 dark:bg-red-950/20">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
