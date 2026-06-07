@@ -208,7 +208,9 @@ router.get("/forecast-advanced", async (req: Request, res: Response): Promise<vo
   ]);
 
   const parseRows = (rows: { rows: unknown[] }) =>
-    (rows.rows as Record<string, unknown>[]).map(r => ({
+  (rows.rows as Record<string, unknown>[])
+    .filter(r => r.month != null)
+    .map(r => ({
       month: String(r.month),
       volume: parseFloat(String(r.volume ?? 0)),
       revenue: parseFloat(String(r.revenue ?? 0)),
@@ -304,13 +306,17 @@ router.get("/forecast-advanced", async (req: Request, res: Response): Promise<vo
   const trendDir = annualGrowthRate > 0.02 ? "hausse" : annualGrowthRate < -0.02 ? "baisse" : "stable";
 
   // ── Generate monthly forecast series ──
-  const lastMonth = monthlyData.length > 0 ? new Date(monthlyData[monthlyData.length - 1].month) : new Date();
+  const rawLastMonth = monthlyData.length > 0
+  ? new Date(monthlyData[monthlyData.length - 1].month)
+  : new Date();
+const lastMonth = isNaN(rawLastMonth.getTime()) ? new Date() : rawLastMonth;
 
-  function nextMonthDate(base: Date, offset: number): string {
-    const d = new Date(base);
-    d.setMonth(d.getMonth() + offset);
-    return d.toISOString().slice(0, 7) + "-01";
-  }
+function nextMonthDate(base: Date, offset: number): string {
+  const d = new Date(base);
+  if (isNaN(d.getTime())) return new Date().toISOString().slice(0, 7) + "-01";
+  d.setMonth(d.getMonth() + offset);
+  return d.toISOString().slice(0, 7) + "-01";
+}
 
   const forecastMonthly = hw.forecast.map((base, i) => {
     const month = nextMonthDate(lastMonth, i + 1);
