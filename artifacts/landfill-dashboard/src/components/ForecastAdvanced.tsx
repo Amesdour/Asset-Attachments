@@ -360,7 +360,7 @@ const modelStats = !hasError ? data?.modelStats : undefined;
   const qualityColor = modelStats ? (modelStats.rSquared > 0.7 ? "text-emerald-600" : modelStats.rSquared > 0.4 ? "text-amber-600" : "text-red-500") : "";
 
   // Site list always comes from siteProjections (always global, never filtered by siteId)
-  const siteOptions = data?.siteProjections ?? [];
+  const siteOptions = !hasError ? (data?.siteProjections ?? []) : [];
   const selectedSiteName = activeSiteId ? (siteOptions.find(s => s.siteId === activeSiteId)?.siteName ?? null) : null;
 
   return (
@@ -468,7 +468,7 @@ const modelStats = !hasError ? data?.modelStats : undefined;
           </div>
         </CardHeader>
         <CardContent className="px-4 pb-4">
-          {loading ? <Skeleton className="h-[280px] w-full" /> : data && (
+          {loading ? <Skeleton className="h-[280px] w-full" /> : data && !hasError && (
             <MainVolumeChart data={data} scenario={scenario} horizonYears={horizonYears} />
           )}
         </CardContent>
