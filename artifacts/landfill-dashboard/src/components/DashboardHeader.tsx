@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { RefreshCw, ChevronDown, Printer, Sun, Moon, Check, LogOut } from "lucide-react";
+import { RefreshCw, ChevronDown, Printer, Sun, Moon, Check, LogOut, Clock } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +13,15 @@ const INTERVAL_OPTIONS = [
   { label: "Toutes les 30 min", ms: 30 * 60 * 1000 },
 ];
 
+function useClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
+
 export function DashboardHeader({ lastRefreshed, isSpinning, onRefresh }: { lastRefreshed: string | null; isSpinning: boolean; onRefresh: () => void }) {
   const { theme, setTheme } = useTheme();
   const isDark = theme === "dark";
@@ -21,6 +30,10 @@ export function DashboardHeader({ lastRefreshed, isSpinning, onRefresh }: { last
   const dropdownRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { logout } = useAuth();
+  const now = useClock();
+
+  const timeStr = now.toLocaleTimeString("fr-DZ", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const dateStr = now.toLocaleDateString("fr-DZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -87,68 +100,96 @@ export function DashboardHeader({ lastRefreshed, isSpinning, onRefresh }: { last
         </div>
       </div>
 
-      <div className="flex items-center gap-3 pt-2 print:hidden">
-        <div className="relative" ref={dropdownRef}>
-          <div
-            className="flex items-center rounded-[6px] overflow-hidden h-[28px] text-[13px] font-medium transition-colors"
-            style={buttonStyle}
-          >
-            <button onClick={onRefresh} className="flex items-center gap-1.5 px-3 h-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
-              <RefreshCw className={`w-3.5 h-3.5 ${isSpinning ? "animate-spin" : ""}`} />
-              Actualiser
-            </button>
-            <div className="w-px h-4 shrink-0" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)" }} />
-            <button onClick={() => setDropdownOpen((o) => !o)} className="flex items-center justify-center px-2 h-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          
-          {dropdownOpen && (
-            <div className="absolute right-0 top-full mt-1 w-48 rounded-md border bg-popover shadow-md z-50 py-1">
-              <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Actualisation auto
-              </div>
-              {INTERVAL_OPTIONS.map(opt => (
-                <button
-                  key={opt.label}
-                  className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent flex items-center justify-between"
-                  onClick={() => { setSelectedIntervalMs(opt.ms); setDropdownOpen(false); }}
-                >
-                  {opt.label}
-                  {selectedIntervalMs === opt.ms && <Check className="w-4 h-4 text-primary" />}
-                </button>
-              ))}
+      <div className="flex flex-col items-end gap-3 pt-2">
+        {/* Real-time clock */}
+        <div
+          className="flex items-center gap-2.5 px-4 py-2.5 rounded-[8px] print:hidden"
+          style={{
+            backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+            border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"}`,
+          }}
+        >
+          <Clock
+            className="w-4 h-4 shrink-0"
+            style={{ color: isDark ? "hsl(153 50% 45%)" : "hsl(153 50% 30%)" }}
+          />
+          <div className="text-right leading-none">
+            <div
+              className="font-mono font-bold tracking-widest text-[22px]"
+              style={{ color: isDark ? "hsl(153 50% 65%)" : "hsl(153 50% 25%)" }}
+            >
+              {timeStr}
             </div>
-          )}
+            <div className="text-[11px] mt-0.5 capitalize" style={{ color: isDark ? "#8a9ba0" : "#6b7280" }}>
+              {dateStr}
+            </div>
+          </div>
         </div>
 
-        <button
-          onClick={() => window.print()}
-          className="flex items-center justify-center w-[28px] h-[28px] rounded-[6px] transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-          style={buttonStyle}
-          aria-label="Export as PDF"
-        >
-          <Printer className="w-4 h-4" />
-        </button>
+        {/* Action buttons */}
+        <div className="flex items-center gap-3 print:hidden">
+          <div className="relative" ref={dropdownRef}>
+            <div
+              className="flex items-center rounded-[6px] overflow-hidden h-[28px] text-[13px] font-medium transition-colors"
+              style={buttonStyle}
+            >
+              <button onClick={onRefresh} className="flex items-center gap-1.5 px-3 h-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                <RefreshCw className={`w-3.5 h-3.5 ${isSpinning ? "animate-spin" : ""}`} />
+                Actualiser
+              </button>
+              <div className="w-px h-4 shrink-0" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)" }} />
+              <button onClick={() => setDropdownOpen((o) => !o)} className="flex items-center justify-center px-2 h-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
 
-        <button
-          onClick={() => setTheme(isDark ? "light" : "dark")}
-          className="flex items-center justify-center w-[28px] h-[28px] rounded-[6px] transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-          style={buttonStyle}
-          aria-label="Toggle dark mode"
-        >
-          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </button>
+            {dropdownOpen && (
+              <div className="absolute right-0 top-full mt-1 w-48 rounded-md border bg-popover shadow-md z-50 py-1">
+                <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Actualisation auto
+                </div>
+                {INTERVAL_OPTIONS.map(opt => (
+                  <button
+                    key={opt.label}
+                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent flex items-center justify-between"
+                    onClick={() => { setSelectedIntervalMs(opt.ms); setDropdownOpen(false); }}
+                  >
+                    {opt.label}
+                    {selectedIntervalMs === opt.ms && <Check className="w-4 h-4 text-primary" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
-        <button
-          onClick={logout}
-          className="flex items-center justify-center w-[28px] h-[28px] rounded-[6px] transition-colors hover:bg-red-100 dark:hover:bg-red-900/30 text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
-          style={{ backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "#F0F1F2" }}
-          aria-label="Se déconnecter"
-          title="Se déconnecter"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
+          <button
+            onClick={() => window.print()}
+            className="flex items-center justify-center w-[28px] h-[28px] rounded-[6px] transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+            style={buttonStyle}
+            aria-label="Export as PDF"
+          >
+            <Printer className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => setTheme(isDark ? "light" : "dark")}
+            className="flex items-center justify-center w-[28px] h-[28px] rounded-[6px] transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+            style={buttonStyle}
+            aria-label="Toggle dark mode"
+          >
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+
+          <button
+            onClick={logout}
+            className="flex items-center justify-center w-[28px] h-[28px] rounded-[6px] transition-colors hover:bg-red-100 dark:hover:bg-red-900/30 text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
+            style={{ backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "#F0F1F2" }}
+            aria-label="Se déconnecter"
+            title="Se déconnecter"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );
