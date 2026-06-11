@@ -48,8 +48,14 @@ export function DashboardHeader({ lastRefreshed, isSpinning, onRefresh }: { last
 
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-x-4 gap-y-4">
-      <div className="pt-2">
-        <h1 className="font-bold text-[32px] tracking-tight text-foreground">Opérations de Déchets</h1>
+      <div className="pt-2 flex items-start gap-4">
+        <img
+          src="/logo.png"
+          alt="Logo EPWGCET"
+          className="w-16 h-16 object-contain mt-1 shrink-0"
+        />
+        <div>
+        <h1 className="font-bold text-[32px] tracking-tight text-foreground">Tableau de Bord operationel</h1>
         <p className="text-muted-foreground mt-1 text-[15px] font-semibold">EPWGCET — Jijel</p>
         <p className="text-muted-foreground/70 text-[11px] mt-0.5">Etablissement Publique de Wilaya de Gestion des Centres d'Enfouissement Technique</p>
         
@@ -76,6 +82,7 @@ export function DashboardHeader({ lastRefreshed, isSpinning, onRefresh }: { last
         {lastRefreshed && (
           <p className="text-[12px] text-muted-foreground mt-2">Dernière actualisation : {lastRefreshed}</p>
         )}
+        </div>
       </div>
 
       <div className="flex items-center gap-3 pt-2 print:hidden">
