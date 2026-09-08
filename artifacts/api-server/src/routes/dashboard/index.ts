@@ -77,9 +77,10 @@ router.get("/kpis", async (req: Request, res: Response): Promise<void> => {
   const prevMonthWhere = buildKpiWhere([sql`ts >= ${prevMonthStart}`, sql`ts <= ${prevMonthEnd}`]);
   const todayWhere = buildKpiWhere([sql`ts >= ${todayStart}`]);
   const settlementWhere = buildKpiWhere([sql`ts >= ${curMonthStart}`]);
+  const prevSettlementWhere = buildKpiWhere([sql`ts >= ${prevMonthStart}`, sql`ts <= ${prevMonthEnd}`]);
   const allTimeWhere = hasFilters ? buildKpiWhere([]) : sql`WHERE status != 'cancelled'`;
 
-  const [curMonth, prevMonth, todayOps, capacityRow, settlementRow] = await Promise.all([
+  const [curMonth, prevMonth, todayOps, capacityRow, settlementRow, prevSettlementRow] = await Promise.all([
     db.execute(sql`SELECT COALESCE(SUM(net), 0) AS total FROM discharges ${curMonthWhere}`),
     db.execute(sql`SELECT COALESCE(SUM(net), 0) AS total FROM discharges ${prevMonthWhere}`),
     db.execute(sql`SELECT COUNT(DISTINCT truck) AS cnt FROM discharges ${todayWhere}`),
@@ -95,6 +96,13 @@ router.get("/kpis", async (req: Request, res: Response): Promise<void> => {
       FROM discharges
       ${settlementWhere}
     `),
+    db.execute(sql`
+      SELECT
+        COALESCE(SUM(CASE WHEN status IN ('paid') THEN net ELSE 0 END), 0) AS settled,
+        COALESCE(SUM(net), 0) AS total
+      FROM discharges
+      ${prevSettlementWhere}
+    `),
   ]);
 
   const curMon = parseFloat(String(curMonth.rows[0]?.total ?? 0));
@@ -109,7 +117,9 @@ router.get("/kpis", async (req: Request, res: Response): Promise<void> => {
   const totalVol = parseFloat(String(settlementRow.rows[0]?.total ?? 0));
   const settlementRate = totalVol > 0 ? (settledVol / totalVol) * 100 : 0;
 
-  const prevSettlement = 72.4;
+  const prevSettledVol = parseFloat(String(prevSettlementRow.rows[0]?.settled ?? 0));
+  const prevTotalVol = parseFloat(String(prevSettlementRow.rows[0]?.total ?? 0));
+  const prevSettlement = prevTotalVol > 0 ? (prevSettledVol / prevTotalVol) * 100 : 0;
 
   // Filtered global KPIs
   const [totalRevenueRow, totalDischargesRow, invoiceRow] = await Promise.all([
