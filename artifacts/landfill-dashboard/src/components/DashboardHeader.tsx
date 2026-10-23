@@ -61,33 +61,38 @@ export function DashboardHeader({ lastRefreshed, isSpinning, onRefresh }: { last
 
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-x-4 gap-y-4">
-      <div className="pt-2">
+      <div className="pt-2" style={{ fontFamily: "'Source Sans 3', 'Inter', sans-serif" }}>
         <div className="flex items-center gap-4">
           <img
             src="/logo.png"
             alt="Logo EPWGCET"
             className="w-16 h-16 object-contain shrink-0"
           />
-          <h1 className="font-bold text-[32px] tracking-tight text-foreground">Tableau de Bord operationel</h1>
+          <div className="min-w-0">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">EPWGCET — Jijel</p>
+            <h1 className="font-bold text-[32px] leading-tight tracking-tight text-foreground">Tableau de Bord opérationnel</h1>
+          </div>
         </div>
-        <div className="mt-2">
-          <p className="text-muted-foreground text-[15px] font-semibold">EPWGCET — Jijel</p>
-          <p className="text-muted-foreground/70 text-[11px] mt-0.5">Etablissement Publique de Wilaya de Gestion des Centres d'Enfouissement Technique</p>
+        <div className="mt-3 border-l-2 pl-4" style={{ borderColor: isDark ? "hsl(153 50% 45%)" : "hsl(153 50% 30%)" }}>
+          <p className="text-muted-foreground text-[13px] max-w-[60ch] leading-snug">
+            Établissement Public de Wilaya de Gestion des Centres d'Enfouissement Technique
+          </p>
 
           {DATA_SOURCES.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 mt-3">
-              <span className="text-[12px] text-muted-foreground shrink-0 font-medium">Sources :</span>
+              <span className="text-[12px] text-muted-foreground shrink-0 font-semibold">Sources :</span>
               {DATA_SOURCES.map((source) => (
                 <span
                   key={source}
-                  className="text-[12px] font-bold rounded px-2 py-0.5 truncate print:!bg-[rgb(229,231,235)] print:!text-[rgb(75,85,99)]"
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-full px-2.5 py-0.5 truncate print:!bg-[rgb(229,231,235)] print:!text-[rgb(75,85,99)]"
                   title={source}
                   style={{
-                    maxWidth: "20ch",
+                    maxWidth: "22ch",
                     backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgb(229, 231, 235)",
                     color: isDark ? "#c8c9cc" : "rgb(75, 85, 99)",
                   }}
                 >
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: isDark ? "hsl(153 50% 55%)" : "hsl(153 50% 35%)" }} />
                   {source}
                 </span>
               ))}
@@ -95,7 +100,10 @@ export function DashboardHeader({ lastRefreshed, isSpinning, onRefresh }: { last
           )}
 
           {lastRefreshed && (
-            <p className="text-[12px] text-muted-foreground mt-2">Dernière actualisation : {lastRefreshed}</p>
+            <p className="flex items-center gap-1.5 text-[12px] text-muted-foreground mt-2">
+              <Clock className="w-3 h-3 shrink-0" />
+              Dernière actualisation : {lastRefreshed}
+            </p>
           )}
         </div>
       </div>
