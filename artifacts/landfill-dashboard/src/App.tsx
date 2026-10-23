@@ -6,7 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import Login from "@/pages/Login";
-import HseDashboard from "@/hse/HseDashboard";
 import { useAuth } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient({
@@ -36,7 +35,6 @@ function AuthGate() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
-      <Route path="/hse" component={HseDashboard} />
       <Route component={NotFound} />
     </Switch>
   );
