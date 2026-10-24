@@ -111,15 +111,15 @@ export default function Dashboard() {
         <KpiCards data={kpisQuery.data} loading={kpisQuery.isLoading || kpisQuery.isFetching} />
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="h-8 mb-4 bg-muted/50">
-            <TabsTrigger value="apercu" className="text-xs h-7">Aperçu général</TabsTrigger>
-            <TabsTrigger value="previsions" className="text-xs h-7">📈 Prévisions</TabsTrigger>
-            <TabsTrigger value="sites" className="text-xs h-7">Sites & Capacités</TabsTrigger>
-            <TabsTrigger value="revenus" className="text-xs h-7">Revenus & Facturation</TabsTrigger>
-            <TabsTrigger value="clients" className="text-xs h-7">Clients</TabsTrigger>
-            <TabsTrigger value="operateurs" className="text-xs h-7">Opérateurs</TabsTrigger>
-            <TabsTrigger value="statistiques" className="text-xs h-7">🧮 Statistiques</TabsTrigger>
-            <TabsTrigger value="logs" className="text-xs h-7">Journal</TabsTrigger>
+          <TabsList className="mb-5 h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-foreground/15 bg-transparent p-0">
+            <TabsTrigger value="apercu" className="-mb-px h-10 rounded-none border-b-[3px] border-transparent px-3.5 text-[13px] font-semibold text-muted-foreground shadow-none data-[state=active]:border-[#5E9B4A] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">Aperçu général</TabsTrigger>
+            <TabsTrigger value="previsions" className="-mb-px h-10 rounded-none border-b-[3px] border-transparent px-3.5 text-[13px] font-semibold text-muted-foreground shadow-none data-[state=active]:border-[#5E9B4A] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">📈 Prévisions</TabsTrigger>
+            <TabsTrigger value="sites" className="-mb-px h-10 rounded-none border-b-[3px] border-transparent px-3.5 text-[13px] font-semibold text-muted-foreground shadow-none data-[state=active]:border-[#5E9B4A] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">Sites & Capacités</TabsTrigger>
+            <TabsTrigger value="revenus" className="-mb-px h-10 rounded-none border-b-[3px] border-transparent px-3.5 text-[13px] font-semibold text-muted-foreground shadow-none data-[state=active]:border-[#5E9B4A] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">Revenus & Facturation</TabsTrigger>
+            <TabsTrigger value="clients" className="-mb-px h-10 rounded-none border-b-[3px] border-transparent px-3.5 text-[13px] font-semibold text-muted-foreground shadow-none data-[state=active]:border-[#5E9B4A] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">Clients</TabsTrigger>
+            <TabsTrigger value="operateurs" className="-mb-px h-10 rounded-none border-b-[3px] border-transparent px-3.5 text-[13px] font-semibold text-muted-foreground shadow-none data-[state=active]:border-[#5E9B4A] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">Opérateurs</TabsTrigger>
+            <TabsTrigger value="statistiques" className="-mb-px h-10 rounded-none border-b-[3px] border-transparent px-3.5 text-[13px] font-semibold text-muted-foreground shadow-none data-[state=active]:border-[#5E9B4A] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">🧮 Statistiques</TabsTrigger>
+            <TabsTrigger value="logs" className="-mb-px h-10 rounded-none border-b-[3px] border-transparent px-3.5 text-[13px] font-semibold text-muted-foreground shadow-none data-[state=active]:border-[#5E9B4A] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">Journal</TabsTrigger>
           </TabsList>
 
           {/* ── TAB: Aperçu général ── */}

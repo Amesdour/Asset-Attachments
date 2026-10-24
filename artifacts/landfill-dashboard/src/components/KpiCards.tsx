@@ -33,12 +33,17 @@ interface KpiCardProps {
   progressColor?: string;
   loading: boolean;
   accent?: string;
+  stripeColor?: string;
 }
 
-function KpiCard({ title, value, sub, icon, trend, trendInverted, progress, progressColor, loading, accent }: KpiCardProps) {
+const STRIPES = ["#5E9B4A", "#B58B55", "#6B665C", "#5E9B4A"];
+
+function KpiCard({ title, value, sub, icon, trend, trendInverted, progress, progressColor, loading, accent, stripeColor, index = 0 }: KpiCardProps & { index?: number }) {
+  const stripe = stripeColor ?? (progress !== undefined ? progressColor ?? "#5E9B4A" : STRIPES[index % STRIPES.length]);
   return (
-    <Card className={`bg-card shadow-sm border border-border/60 hover:shadow-md transition-shadow ${accent ?? ""}`}>
-      <CardContent className="p-4">
+    <Card className={`relative overflow-hidden rounded-2xl border-0 bg-card shadow-none ${accent ?? ""}`}>
+      <span aria-hidden className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: stripe }} />
+      <CardContent className="p-4 pl-5">
         {loading ? (
           <>
             <Skeleton className="h-3 w-2/3 mb-3" />
@@ -48,10 +53,10 @@ function KpiCard({ title, value, sub, icon, trend, trendInverted, progress, prog
         ) : (
           <>
             <div className="flex items-start justify-between mb-1.5">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide leading-snug">{title}</p>
-              <div className="p-1.5 rounded-md bg-muted/60">{icon}</div>
+              <p className="text-[13px] font-semibold text-muted-foreground leading-snug">{title}</p>
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-foreground/[0.07] text-foreground/70 [&_svg]:!text-current">{icon}</div>
             </div>
-            <p className="text-2xl font-bold text-foreground tracking-tight">{value}</p>
+            <p className="text-[28px] font-black leading-tight text-foreground tracking-[-0.02em] tabular-nums" style={{ fontFamily: "'Source Sans 3', 'Inter', sans-serif" }}>{value}</p>
             {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
             {progress !== undefined ? (
               <div className="mt-2.5">
@@ -132,7 +137,7 @@ export function KpiCards({ data, loading }: { data?: DashboardKpis; loading: boo
       icon: <FileWarning className="w-4 h-4 text-red-500" />,
       trendInverted: true,
       loading,
-      accent: data && overdueInvoicesCount > 0 ? "border-l-4 border-l-red-400" : "",
+      stripeColor: data && overdueInvoicesCount > 0 ? "#dc2626" : undefined,
     },
     {
       title: "Revenus / tonne",
@@ -145,7 +150,7 @@ export function KpiCards({ data, loading }: { data?: DashboardKpis; loading: boo
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-      {kpis.map((k, i) => <KpiCard key={i} {...k} />)}
+      {kpis.map((k, i) => <KpiCard key={i} index={i} {...k} />)}
     </div>
   );
 }
