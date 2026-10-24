@@ -28,9 +28,9 @@ export function TimeseriesChart({ data, loading, granularity, onGranularityChang
   const hasRevenue = chartData.some(d => d["Revenus (k DZD)"] != null && d["Revenus (k DZD)"]! > 0);
 
   return (
-    <Card className="border border-border/60">
+    <Card className="rounded-2xl border-0 shadow-none">
       <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
-        <CardTitle className="text-sm font-semibold">Évolution des décharges dans le temps</CardTitle>
+        <CardTitle className="text-[15px] font-bold tracking-tight">Évolution des décharges dans le temps</CardTitle>
         <Select value={granularity} onValueChange={v => onGranularityChange(v as GetDashboardTimeseriesGranularity)}>
           <SelectTrigger className="h-7 w-[100px] text-xs bg-background">
             <SelectValue />
@@ -51,14 +51,14 @@ export function TimeseriesChart({ data, loading, granularity, onGranularityChang
             <ComposedChart data={chartData} margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
               <defs>
                 <linearGradient id="volGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.02} />
+                  <stop offset="5%" stopColor="#2F7F79" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#2F7F79" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-              <YAxis yAxisId="vol" tick={{ fontSize: 10 }} tickFormatter={v => `${v}t`} />
-              {hasRevenue && <YAxis yAxisId="rev" orientation="right" tick={{ fontSize: 10 }} tickFormatter={v => `${v}k`} />}
+              <CartesianGrid strokeDasharray="0" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+              <YAxis yAxisId="vol" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} tickFormatter={v => `${v}t`} />
+              {hasRevenue && <YAxis yAxisId="rev" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} tickFormatter={v => `${v}k`} />}
               <Tooltip
                 contentStyle={{ fontSize: 11 }}
                 formatter={(v: number, name: string) => [
@@ -66,8 +66,8 @@ export function TimeseriesChart({ data, loading, granularity, onGranularityChang
                 ]}
               />
               <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-              <Area yAxisId="vol" type="monotone" dataKey="Volume (t)" stroke="#3b82f6" strokeWidth={2} fill="url(#volGrad)" dot={false} activeDot={{ r: 4 }} />
-              {hasRevenue && <Line yAxisId="rev" type="monotone" dataKey="Revenus (k DZD)" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />}
+              <Area yAxisId="vol" type="monotone" dataKey="Volume (t)" stroke="#2F7F79" strokeWidth={2} fill="url(#volGrad)" dot={false} activeDot={{ r: 4 }} />
+              {hasRevenue && <Line yAxisId="rev" type="monotone" dataKey="Revenus (k DZD)" stroke="#5E9B4A" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />}
             </ComposedChart>
           </ResponsiveContainer>
         )}

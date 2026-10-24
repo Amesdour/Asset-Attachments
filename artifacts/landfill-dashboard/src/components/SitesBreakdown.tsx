@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, RadarChart, PolarGrid, PolarAngleAxis, Radar, Legend } from "recharts";
 import type { SiteBreakdown } from "@workspace/api-client-react";
 
-const SITE_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"];
+const SITE_COLORS = ["#2F7F79", "#5E9B4A", "#B58B55", "#6B665C"];
 
 function CapacityGauge({ pct, color }: { pct: number; color: string }) {
   const r = 36;
@@ -65,9 +65,9 @@ export function SitesBreakdown({ data, loading }: { data?: SiteBreakdown[]; load
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {data.map((site, i) => {
           const color = SITE_COLORS[i % SITE_COLORS.length];
-          const capColor = site.pctUsed > 85 ? "#dc2626" : site.pctUsed > 70 ? "#f59e0b" : "#16a34a";
+          const capColor = site.pctUsed > 85 ? "#dc2626" : site.pctUsed > 70 ? "#B58B55" : "#16a34a";
           return (
-            <Card key={site.siteId} className="border border-border/60 hover:shadow-md transition-shadow">
+            <Card key={site.siteId} className="rounded-2xl border-0 shadow-none">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-2">
                   <div>
@@ -131,14 +131,14 @@ export function SitesBreakdown({ data, loading }: { data?: SiteBreakdown[]; load
 
       {/* Side-by-side comparison */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="border border-border/60">
+        <Card className="rounded-2xl border-0 shadow-none">
           <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-sm font-semibold">Volume reçu par site (t)</CardTitle>
+            <CardTitle className="text-[15px] font-bold tracking-tight">Volume reçu par site (t)</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={compData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <CartesianGrid strokeDasharray="0" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v: number) => [`${v.toFixed(1)} t`, "Volume"]} />
@@ -150,14 +150,14 @@ export function SitesBreakdown({ data, loading }: { data?: SiteBreakdown[]; load
           </CardContent>
         </Card>
 
-        <Card className="border border-border/60">
+        <Card className="rounded-2xl border-0 shadow-none">
           <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-sm font-semibold">Revenus par site (k DZD)</CardTitle>
+            <CardTitle className="text-[15px] font-bold tracking-tight">Revenus par site (k DZD)</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={compData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <CartesianGrid strokeDasharray="0" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v: number) => [`${v.toFixed(1)}k DZD`, "Revenus"]} />

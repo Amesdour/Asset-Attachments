@@ -19,7 +19,7 @@ const TYPE_BADGE: Record<string, string> = {
   cash: "bg-orange-100 text-orange-700",
 };
 
-const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#f97316", "#84cc16"];
+const COLORS = ["#2F7F79", "#5E9B4A", "#B58B55", "#6B665C", "#C4553B", "#7FB6A6", "#f97316", "#84cc16"];
 
 export function ClientsRanking({ data, loading }: { data?: ClientRanking[]; loading: boolean }) {
   if (loading) return (
@@ -41,12 +41,12 @@ export function ClientsRanking({ data, loading }: { data?: ClientRanking[]; load
     <div className="space-y-4">
       {/* Charts row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="border border-border/60">
-          <CardHeader className="pb-2 pt-4 px-4"><CardTitle className="text-sm font-semibold">Volume par client (t)</CardTitle></CardHeader>
+        <Card className="rounded-2xl border-0 shadow-none">
+          <CardHeader className="pb-2 pt-4 px-4"><CardTitle className="text-[15px] font-bold tracking-tight">Volume par client (t)</CardTitle></CardHeader>
           <CardContent className="px-4 pb-4">
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 40, top: 4, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                <CartesianGrid strokeDasharray="0" stroke="hsl(var(--border))" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => `${v}t`} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={100} />
                 <Tooltip formatter={(v: number) => [`${v} t`, "Volume"]} />
@@ -58,12 +58,12 @@ export function ClientsRanking({ data, loading }: { data?: ClientRanking[]; load
           </CardContent>
         </Card>
 
-        <Card className="border border-border/60">
-          <CardHeader className="pb-2 pt-4 px-4"><CardTitle className="text-sm font-semibold">Revenus par client (k DZD)</CardTitle></CardHeader>
+        <Card className="rounded-2xl border-0 shadow-none">
+          <CardHeader className="pb-2 pt-4 px-4"><CardTitle className="text-[15px] font-bold tracking-tight">Revenus par client (k DZD)</CardTitle></CardHeader>
           <CardContent className="px-4 pb-4">
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 40, top: 4, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                <CartesianGrid strokeDasharray="0" stroke="hsl(var(--border))" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => `${v}k`} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={100} />
                 <Tooltip formatter={(v: number) => [`${v.toFixed(1)}k DZD`, "Revenus"]} />
@@ -77,8 +77,8 @@ export function ClientsRanking({ data, loading }: { data?: ClientRanking[]; load
       </div>
 
       {/* Full table */}
-      <Card className="border border-border/60">
-        <CardHeader className="pb-2 pt-4 px-4"><CardTitle className="text-sm font-semibold">Classement clients complet</CardTitle></CardHeader>
+      <Card className="rounded-2xl border-0 shadow-none">
+        <CardHeader className="pb-2 pt-4 px-4"><CardTitle className="text-[15px] font-bold tracking-tight">Classement clients complet</CardTitle></CardHeader>
         <CardContent className="px-0 pb-0">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">

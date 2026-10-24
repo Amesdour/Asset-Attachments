@@ -7,14 +7,14 @@ import { useTheme } from "next-themes";
 import type { TreatmentMethodSlice } from "@workspace/api-client-react";
 
 const CHART_COLOR_LIST = [
-  "#0079F2", // blue
-  "#10b981", // green
-  "#f59e0b", // amber
-  "#6366f1", // indigo
+  "#2F7F79", // blue
+  "#5E9B4A", // green
+  "#B58B55", // amber
+  "#6B665C", // indigo
 ];
 
 export function TreatmentMethodChart({ data, loading }: { data?: TreatmentMethodSlice[]; loading: boolean }) {
-  const { theme } = useTheme();
+  const { resolvedTheme: theme } = useTheme();
   const isDark = theme === "dark";
   const gridColor = isDark ? "rgba(255,255,255,0.08)" : "#e5e5e5";
   const tickColor = isDark ? "#98999C" : "#71717a";
@@ -60,9 +60,9 @@ export function TreatmentMethodChart({ data, loading }: { data?: TreatmentMethod
   };
 
   return (
-    <Card className="col-span-1 shadow-sm">
-      <CardHeader className="px-5 pt-5 pb-3 flex flex-row items-center justify-between space-y-0 border-b border-border/50">
-        <CardTitle className="text-base font-semibold">Modes de paiement</CardTitle>
+    <Card className="col-span-1 rounded-2xl border-0 shadow-none">
+      <CardHeader className="px-5 pt-5 pb-3 flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-[15px] font-bold tracking-tight">Modes de paiement</CardTitle>
         {!loading && data && data.length > 0 && (
           <CSVLink data={data} filename="treatment-methods.csv" className="print:hidden flex items-center justify-center w-7 h-7 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
             <Download className="w-3.5 h-3.5" />

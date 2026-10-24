@@ -7,12 +7,12 @@ import { useTheme } from "next-themes";
 import type { WasteCategoryBar } from "@workspace/api-client-react";
 
 const CHART_COLORS = {
-  collected: "#3b82f6", // blue
-  treated: "#10b981", // green
+  collected: "#2F7F79", // blue
+  treated: "#5E9B4A", // green
 };
 
 export function WasteCategoryChart({ data, loading }: { data?: WasteCategoryBar[]; loading: boolean }) {
-  const { theme } = useTheme();
+  const { resolvedTheme: theme } = useTheme();
   const isDark = theme === "dark";
   const gridColor = isDark ? "rgba(255,255,255,0.08)" : "#e5e5e5";
   const tickColor = isDark ? "#98999C" : "#71717a";
@@ -48,9 +48,9 @@ export function WasteCategoryChart({ data, loading }: { data?: WasteCategoryBar[
   };
 
   return (
-    <Card className="col-span-1 shadow-sm">
-      <CardHeader className="px-5 pt-5 pb-3 flex flex-row items-center justify-between space-y-0 border-b border-border/50">
-        <CardTitle className="text-base font-semibold">Collecté vs Traité</CardTitle>
+    <Card className="col-span-1 rounded-2xl border-0 shadow-none">
+      <CardHeader className="px-5 pt-5 pb-3 flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-[15px] font-bold tracking-tight">Collecté vs Traité</CardTitle>
         {!loading && data && data.length > 0 && (
           <CSVLink data={data} filename="waste-categories.csv" className="print:hidden flex items-center justify-center w-7 h-7 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
             <Download className="w-3.5 h-3.5" />
@@ -63,13 +63,13 @@ export function WasteCategoryChart({ data, loading }: { data?: WasteCategoryBar[
         ) : data && data.length > 0 ? (
           <ResponsiveContainer width="100%" height={300} debounce={0}>
             <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-              <XAxis dataKey="category" tick={{ fontSize: 12, fill: tickColor }} stroke={tickColor} axisLine={false} tickLine={false} dy={10} />
+              <CartesianGrid strokeDasharray="0" stroke={gridColor} vertical={false} />
+              <XAxis dataKey="category" interval={0} tick={{ fontSize: 12, fill: tickColor }} stroke={tickColor} axisLine={false} tickLine={false} dy={10} />
               <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: tickColor }} stroke={tickColor} axisLine={false} tickLine={false} dx={-10} />
               <Tooltip content={<CustomTooltip />} isAnimationActive={false} cursor={{ fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }} />
               <Legend content={<CustomLegend />} verticalAlign="bottom" />
-              <Bar dataKey="collected" name="Collecté" fill={CHART_COLORS.collected} fillOpacity={0.9} radius={[2, 2, 0, 0]} isAnimationActive={false} maxBarSize={40} />
-              <Bar dataKey="treated" name="Traité" fill={CHART_COLORS.treated} fillOpacity={0.9} radius={[2, 2, 0, 0]} isAnimationActive={false} maxBarSize={40} />
+              <Bar dataKey="collected" name="Collecté" fill={CHART_COLORS.collected} fillOpacity={0.9} radius={[6, 6, 0, 0]} isAnimationActive={false} maxBarSize={40} />
+              <Bar dataKey="treated" name="Traité" fill={CHART_COLORS.treated} fillOpacity={0.9} radius={[6, 6, 0, 0]} isAnimationActive={false} maxBarSize={40} />
             </BarChart>
           </ResponsiveContainer>
         ) : (

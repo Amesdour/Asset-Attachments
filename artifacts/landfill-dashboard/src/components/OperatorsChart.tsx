@@ -6,7 +6,7 @@ import type { OperatorPerformance } from "@workspace/api-client-react";
 
 function fmt(n: number) { return n.toLocaleString("fr-DZ"); }
 
-const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4"];
+const COLORS = ["#2F7F79", "#5E9B4A", "#B58B55", "#6B665C", "#C4553B", "#7FB6A6"];
 
 export function OperatorsChart({ data, loading }: { data?: OperatorPerformance[]; loading: boolean }) {
   if (loading) return <Skeleton className="h-64 w-full" />;
@@ -24,18 +24,18 @@ export function OperatorsChart({ data, loading }: { data?: OperatorPerformance[]
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="border border-border/60">
+        <Card className="rounded-2xl border-0 shadow-none">
           <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-sm font-semibold">Volume traité par opérateur (t)</CardTitle>
+            <CardTitle className="text-[15px] font-bold tracking-tight">Volume traité par opérateur (t)</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 24 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <CartesianGrid strokeDasharray="0" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-20} textAnchor="end" interval={0} />
                 <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `${v}t`} />
                 <Tooltip formatter={(v: number) => [`${v.toFixed(2)} t`, "Volume"]} />
-                <Bar dataKey="Volume" radius={[4,4,0,0]}>
+                <Bar dataKey="Volume" radius={[6,6,0,0]}>
                   {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Bar>
               </BarChart>
@@ -43,20 +43,20 @@ export function OperatorsChart({ data, loading }: { data?: OperatorPerformance[]
           </CardContent>
         </Card>
 
-        <Card className="border border-border/60">
+        <Card className="rounded-2xl border-0 shadow-none">
           <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-sm font-semibold">Décharges vs Annulations par opérateur</CardTitle>
+            <CardTitle className="text-[15px] font-bold tracking-tight">Décharges vs Annulations par opérateur</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 24 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <CartesianGrid strokeDasharray="0" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-20} textAnchor="end" interval={0} />
                 <YAxis tick={{ fontSize: 10 }} />
                 <Tooltip />
                 <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="Décharges" fill="#3b82f6" radius={[4,4,0,0]} />
-                <Bar dataKey="Annulations" fill="#ef4444" radius={[4,4,0,0]} />
+                <Bar dataKey="Décharges" fill="#2F7F79" radius={[6,6,0,0]} />
+                <Bar dataKey="Annulations" fill="#C4553B" radius={[6,6,0,0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -64,9 +64,9 @@ export function OperatorsChart({ data, loading }: { data?: OperatorPerformance[]
       </div>
 
       {/* Detail table */}
-      <Card className="border border-border/60">
+      <Card className="rounded-2xl border-0 shadow-none">
         <CardHeader className="pb-2 pt-4 px-4">
-          <CardTitle className="text-sm font-semibold">Performance détaillée par opérateur</CardTitle>
+          <CardTitle className="text-[15px] font-bold tracking-tight">Performance détaillée par opérateur</CardTitle>
         </CardHeader>
         <CardContent className="px-0 pb-0">
           <div className="overflow-x-auto">

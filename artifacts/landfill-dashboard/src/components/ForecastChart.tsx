@@ -17,7 +17,7 @@ function YearsLabel({ years }: { years: number }) {
 }
 
 export function ForecastChart({ data, loading }: { data?: ForecastResult; loading: boolean }) {
-  const { theme } = useTheme();
+  const { resolvedTheme: theme } = useTheme();
   const isDark = theme === "dark";
   const gridColor = isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb";
   const tickColor = isDark ? "#6b7280" : "#9ca3af";
@@ -62,11 +62,11 @@ export function ForecastChart({ data, loading }: { data?: ForecastResult; loadin
   };
 
   return (
-    <Card className="shadow-sm overflow-hidden">
-      <CardHeader className="px-5 pt-5 pb-3 border-b border-border/50">
+    <Card className="overflow-hidden rounded-2xl border-0 shadow-none">
+      <CardHeader className="px-5 pt-5 pb-3">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <CardTitle className="text-[15px] font-bold tracking-tight flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-primary" />
               Prévisions capacité & revenus
             </CardTitle>
@@ -90,14 +90,14 @@ export function ForecastChart({ data, loading }: { data?: ForecastResult; loadin
         ) : combinedChart.length > 0 ? (
           <ResponsiveContainer width="100%" height={260} debounce={0}>
             <ComposedChart data={combinedChart} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+              <CartesianGrid strokeDasharray="0" stroke={gridColor} vertical={false} />
               <XAxis dataKey="date" tickFormatter={(d) => format(new Date(d), "MMM yy")} tick={{ fontSize: 11, fill: tickColor }} axisLine={false} tickLine={false} dy={8} minTickGap={28} />
               <YAxis yAxisId="vol" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k t`} tick={{ fontSize: 11, fill: tickColor }} axisLine={false} tickLine={false} dx={-4} width={52} />
               <YAxis yAxisId="rev" orientation="right" tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} tick={{ fontSize: 11, fill: tickColor }} axisLine={false} tickLine={false} dx={4} width={48} />
               <Tooltip content={<VolumeTooltip />} isAnimationActive={false} />
               <Legend iconType="line" wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-              <Line yAxisId="vol" type="monotone" dataKey="cumulativeVolume" name="Volume cumulé (t)" stroke="#3b82f6" strokeWidth={2.5} dot={false} strokeDasharray={(d: any) => d?.isForecast ? "6 3" : "0"} isAnimationActive={false} />
-              <Line yAxisId="rev" type="monotone" dataKey="revenue" name="Revenus mensuels (DZD)" stroke="#10b981" strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
+              <Line yAxisId="vol" type="monotone" dataKey="cumulativeVolume" name="Volume cumulé (t)" stroke="#2F7F79" strokeWidth={2.5} dot={false} strokeDasharray={(d: any) => d?.isForecast ? "6 3" : "0"} isAnimationActive={false} />
+              <Line yAxisId="rev" type="monotone" dataKey="revenue" name="Revenus mensuels (DZD)" stroke="#5E9B4A" strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
             </ComposedChart>
           </ResponsiveContainer>
         ) : (
@@ -115,7 +115,7 @@ export function ForecastChart({ data, loading }: { data?: ForecastResult; loadin
               {data.siteProjections.map((site) => {
                 const pct = Math.max(site.pctUsed, 0.01);
                 const barWidth = Math.min(pct * 100, 100);
-                const barColor = pct > 50 ? "#ef4444" : pct > 25 ? "#f59e0b" : "#10b981";
+                const barColor = pct > 50 ? "#C4553B" : pct > 25 ? "#B58B55" : "#5E9B4A";
                 return (
                   <div key={site.siteId}>
                     <div className="flex items-center justify-between mb-1">
