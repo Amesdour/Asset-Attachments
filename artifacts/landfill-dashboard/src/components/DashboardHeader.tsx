@@ -80,12 +80,12 @@ export function DashboardHeader({ lastRefreshed, isSpinning, onRefresh }: { last
     >
       <div className="relative">
         <div className="flex items-center gap-4">
-          <div
-            className="flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-2xl p-2 shadow-md"
-            style={{ backgroundColor: isDark ? "rgba(255,255,255,0.92)" : "#ffffff", border: `1px solid ${glassBorder}` }}
-          >
-            <img src="/logo.png" alt="Logo EPWGCET" className="h-full w-full object-contain" />
-          </div>
+          <img
+            src="/logo.png"
+            alt="Logo EPWGCET"
+            className="h-[72px] w-[72px] shrink-0 object-contain"
+            style={{ filter: "drop-shadow(0 6px 14px rgba(16,185,129,0.25))" }}
+          />
           <div className="min-w-0">
             <span
               className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em]"
